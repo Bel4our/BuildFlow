@@ -1,0 +1,15 @@
+# Файлы зависимостей
+node_modules/
+/backend/node_modules
+/frontend/node_modules
+
+# Файлы сборки
+/backend/dist
+/frontend/dist
+
+# Логи
+npm-debug.log*
+
+# Секретные переменные
+.env
+*.env
