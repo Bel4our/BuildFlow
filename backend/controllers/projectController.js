@@ -1,5 +1,6 @@
 import { Project, ProjectStage, User, Task, Attachment, Role, Message } from '../models/index.js';
 import { Op } from 'sequelize';
+import { sendNotification } from '../services/telegramBot.js';
 
 export const getProjects = async (req, res) => {
   try {
@@ -41,11 +42,9 @@ export const getProjects = async (req, res) => {
     }
     res.json(projects);
   } catch (error) {
-    console.error("Ошибка в getProjects:", error);
-    res.status(500).json({ message: 'Ошибка получения проектов', error: error.message });
+    res.status(500).json({ message: 'Ошибка получения проектов' });
   }
 };
-
 
 export const createProject = async (req, res) => {
   try {
@@ -57,50 +56,71 @@ export const createProject = async (req, res) => {
       await project.setUsers(userIds);
     }
 
-    res.status(201).json({ message: 'Каркас проекта создан. Ожидание плана от прораба.', project });
+    res.status(201).json({ message: 'Проект создан', project });
   } catch (error) {
-    console.error("Ошибка в createProject:", error);
-    res.status(500).json({ message: 'Ошибка при создании проекта', error: error.message });
+    res.status(500).json({ message: 'Ошибка при создании проекта' });
   }
 };
-
-
-
-
 
 export const updatePlanStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { planStatus } = req.body; 
-    const project = await Project.findByPk(id);
+    const project = await Project.findByPk(id, {
+      include: [{ model: User, as: 'Users', include: [Role] }]
+    });
+    
     if (!project) return res.status(404).json({ message: 'Проект не найден' });
 
     await project.update({ planStatus });
+
+    const clients = project.Users.filter(u => u.Role.name === 'Заказчик');
+    const builders = project.Users.filter(u => u.Role.name === 'Прораб');
+
+    if (planStatus === 'pending_approval') {
+      clients.forEach(c => sendNotification(c, `Прораб отправил план проекта "${project.name}" на утверждение.`, project.id));
+    } else if (planStatus === 'approved') {
+      builders.forEach(b => sendNotification(b, `Заказчик утвердил план проекта "${project.name}".`, project.id));
+    } else if (planStatus === 'rejected') {
+      builders.forEach(b => sendNotification(b, `Заказчик отклонил план проекта "${project.name}". Требуются изменения.`, project.id));
+    }
+
     res.json({ message: `Статус плана изменен на ${planStatus}`, project });
   } catch (error) {
     res.status(500).json({ message: 'Ошибка изменения статуса плана' });
   }
 };
 
-
 export const getProjectMessages = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
-
-    await Message.update(
-      { isRead: true },
-      { where: { projectId: id, senderId: { [Op.ne]: userId }, isRead: false } }
-    );
-
     const messages = await Message.findAll({
       where: { projectId: id },
-      include: [{ model: User, as: 'sender', attributes: ['fullName', 'roleId'] }],
+      include: [{ model: User, as: 'sender', attributes: ['id', 'fullName', 'roleId'] }],
       order: [['createdAt', 'ASC']]
     });
     res.json(messages);
   } catch (error) {
     res.status(500).json({ message: 'Ошибка загрузки чата' });
+  }
+};
+
+export const markMessagesRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const [updatedCount] = await Message.update(
+      { isRead: true },
+      { where: { projectId: id, senderId: { [Op.ne]: userId }, isRead: false } }
+    );
+
+    if (updatedCount > 0) {
+      req.io.to(id).emit('messages_read', { readerId: userId });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка обновления статуса' });
   }
 };
 
@@ -124,7 +144,6 @@ export const updateProject = async (req, res) => {
   }
 };
 
-
 export const sendProjectMessage = async (req, res) => {
   try {
     const { id } = req.params;
@@ -134,8 +153,31 @@ export const sendProjectMessage = async (req, res) => {
       projectId: id,
       senderId: req.user.id
     });
-    res.status(201).json(message);
+
+    const fullMessage = await Message.findByPk(message.id, {
+      include: [{ model: User, as: 'sender', attributes: ['id', 'fullName', 'roleId'] }],
+    });
+
+    req.io.to(id).emit('message_broadcast', fullMessage);
+
+    res.status(201).json(fullMessage);
   } catch (error) {
     res.status(500).json({ message: 'Ошибка отправки сообщения' });
   }
+};
+
+export const completeProject = async (req, res) => {
+  try {
+    const project = await Project.findByPk(req.params.id, {
+      include: [{ model: User, as: 'Users' }]
+    });
+    project.status = 'completed';
+    await project.save();
+
+    project.Users.forEach(u => {
+      sendNotification(u, `Проект "${project.name}" успешно завершен! Поздравляем!`, project.id);
+    });
+
+    res.json({ message: 'Проект успешно завершен!' });
+  } catch (error) { res.status(500).json({ message: 'Ошибка завершения проекта' }); }
 };

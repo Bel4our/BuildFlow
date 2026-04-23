@@ -1,32 +1,34 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { translatePlanStatus } from '../utils/translations';
+import styles from './AdminDashboard.module.css';
 
-const modalStyles = {
-  overlay: {
-    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex',
-    alignItems: 'center', justifyContent: 'center', zIndex: 1000
-  },
-  content: {
-    background: 'white', padding: '30px', borderRadius: '8px',
-    width: '90%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto'
-  }
-};
+import ProjectModal from '../components/admin/ProjectModal';
+import CreateUserModal from '../components/admin/CreateUserModal';
+import EditUserModal from '../components/admin/EditUserModal';
+import ServiceModal from '../components/admin/ServiceModal';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('projects');
-  const [searchTerm, setSearchTerm] = useState('');
+  
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [services, setServices] = useState([]);
+  const [roles, setRoles] = useState([]); 
+
+  const [searchProject, setSearchProject] = useState('');
+  const [searchUser, setSearchUser] = useState('');
 
   const [isProjectModalOpen, setProjectModalOpen] = useState(false);
   const [isServiceModalOpen, setServiceModalOpen] = useState(false);
-  const [isEditProjectModalOpen, setEditProjectModalOpen] = useState(false);
+  const [isCreateUserModalOpen, setCreateUserModalOpen] = useState(false);
+  const [isEditUserModalOpen, setEditUserModalOpen] = useState(false);
 
-  const [newProject, setNewProject] = useState({ name: '', description: '', startDate: '', plannedEndDate: '', userIds: [] });
-  const [editProject, setEditProject] = useState(null);
-  const [serviceForm, setServiceForm] = useState({ id: null, name: '', description: '' });
+  const [editingProject, setEditingProject] = useState(null);
+  const [editingService, setEditingService] = useState(null);
+  const [editingUser, setEditingUser] = useState(null);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -40,83 +42,77 @@ const AdminDashboard = () => {
       setProjects(projRes.data);
       setUsers(usersRes.data);
       setServices(servRes.data);
-    } catch (error) { 
-      console.error(error); 
-    }
+      const uniqueRoles = Array.from(new Map(usersRes.data.filter(u => u.Role).map(u => [u.Role.id, u.Role])).values());
+      setRoles(uniqueRoles);
+    } catch (error) {}
   };
 
-  const handleCreateProject = async (e) => {
-    e.preventDefault();
+  const handleSaveProject = async (projectData) => {
     try {
-      await api.post('/projects', newProject);
+      if (projectData.id) await api.put(`/projects/${projectData.id}`, projectData);
+      else await api.post('/projects', projectData);
       fetchData();
       setProjectModalOpen(false);
-      setNewProject({ name: '', description: '', startDate: '', plannedEndDate: '', userIds: [] });
-    } catch (error) { 
-      alert('Ошибка при создании проекта'); 
-    }
+      setEditingProject(null);
+    } catch (error) { alert('Ошибка при сохранении проекта'); }
   };
 
-  const handleUpdateProject = async (e) => {
-    e.preventDefault();
+  const handleCreateUser = async (userData) => {
     try {
-      await api.put(`/projects/${editProject.id}`, editProject);
+      await api.post('/admin/users', userData);
       fetchData();
-      setEditProjectModalOpen(false);
-    } catch (error) { 
-      alert('Ошибка обновления'); 
-    }
+      setCreateUserModalOpen(false);
+    } catch (error) { alert('Ошибка создания пользователя'); }
+  };
+
+  const handleUpdateUser = async (userData) => {
+    try {
+      await api.put(`/admin/users/${userData.id}`, userData);
+      fetchData();
+      setEditUserModalOpen(false);
+      setEditingUser(null);
+    } catch (error) { alert('Ошибка обновления пользователя'); }
+  };
+
+  const handleSaveService = async (serviceData) => {
+    try {
+      if (serviceData.id) await api.put(`/services/${serviceData.id}`, serviceData);
+      else await api.post('/services', serviceData);
+      fetchData();
+      setServiceModalOpen(false);
+      setEditingService(null);
+    } catch (error) {}
   };
 
   const toggleUserStatus = async (id) => {
-    try {
-      await api.put(`/admin/users/${id}/status`);
-      fetchData();
-    } catch (error) { 
-      alert('Ошибка смены статуса'); 
-    }
+    try { await api.put(`/admin/users/${id}/status`); fetchData(); } 
+    catch (error) { alert('Ошибка смены статуса'); }
   };
 
   const deleteUser = async (id) => {
-    if(window.confirm('Точно удалить пользователя?')) {
-      try {
-        await api.delete(`/admin/users/${id}`);
-        fetchData();
-      } catch (error) { 
-        alert('Ошибка удаления'); 
-      }
-    }
-  };
-
-  const openServiceModal = (service = null) => {
-    if (service) setServiceForm(service);
-    else setServiceForm({ id: null, name: '', description: '' });
-    setServiceModalOpen(true);
-  };
-
-  const handleSaveService = async (e) => {
-    e.preventDefault();
-    try {
-      if (serviceForm.id) await api.put(`/services/${serviceForm.id}`, serviceForm);
-      else await api.post('/services', serviceForm);
-      fetchData();
-      setServiceModalOpen(false);
-    } catch (error) { 
-      alert('Ошибка сохранения услуги'); 
-    }
-  };
-
-  const handleDeleteService = async (id) => {
-    if(window.confirm('Удалить услугу?')) {
-      try { await api.delete(`/services/${id}`); fetchData(); } 
+    if(window.confirm('Точно удалить?')) {
+      try { await api.delete(`/admin/users/${id}`); fetchData(); } 
       catch (error) { alert('Ошибка удаления'); }
     }
   };
 
+  const handleDeleteService = async (id) => {
+    if(window.confirm('Удалить?')) {
+      try { await api.delete(`/services/${id}`); fetchData(); } 
+      catch (error) {}
+    }
+  };
+
+  const openProjectModal = (project = null) => { setEditingProject(project); setProjectModalOpen(true); };
+  const openEditUserModal = (user) => { setEditingUser(user); setEditUserModalOpen(true); };
+  const openServiceModal = (service = null) => { setEditingService(service); setServiceModalOpen(true); };
+
+  const filteredProjects = projects.filter(p => p.name.toLowerCase().includes(searchProject.toLowerCase()));
+  const filteredUsers = users.filter(u => u.fullName.toLowerCase().includes(searchUser.toLowerCase()) || u.email.toLowerCase().includes(searchUser.toLowerCase()));
+
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div className={styles.container}>
       <h1>Панель Администратора</h1>
-      
       <div className="tabs">
         <button className={`tab ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}>Проекты</button>
         <button className={`tab ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>Пользователи</button>
@@ -125,28 +121,27 @@ const AdminDashboard = () => {
 
       {activeTab === 'projects' && (
         <div>
-          <button onClick={() => setProjectModalOpen(true)} style={{ marginBottom: '20px', background: '#28a745', color: 'white' }}>
-            + Создать новый проект
-          </button>
-          
-          <div className="card-grid" style={{ padding: '0' }}>
-            {projects.map(p => (
+          <div className={styles.controlsRow}>
+            <button onClick={() => openProjectModal()} className="btn-primary">+ Создать новый проект</button>
+            <input type="text" placeholder="Поиск проектов..." value={searchProject} onChange={e => setSearchProject(e.target.value)} className={styles.searchBar} />
+          </div>
+          <div className="card-grid">
+            {filteredProjects.map(p => (
               <div className="card" key={p.id}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--primary-color)', paddingBottom: '10px', marginBottom: '10px' }}>
-                  <h3 style={{ margin: 0, background: 'none', color: 'var(--text-dark)', padding: 0 }}>{p.name}</h3>
-                  <button onClick={() => { setEditProject({...p, userIds: p.Users.map(u => u.id.toString())}); setEditProjectModalOpen(true); }} style={{ padding: '5px 10px', fontSize: '0.8em' }}>Изменить</button>
+                <div className={styles.cardHeader}>
+                  <h3 className={`${styles.cardTitle} ${styles.truncateMultiline}`} title={p.name}>{p.name}</h3>
+                  <button onClick={() => openProjectModal(p)} className="btn-secondary">Изменить</button>
                 </div>
-                
                 <p><strong>Статус:</strong> <span className={`status-badge ${p.status === 'active' ? 'status-active' : 'status-blocked'}`}>{p.status === 'active' ? 'Активен' : 'Завершен'}</span></p>
-                <p><strong>План:</strong> {p.planStatus}</p>
-                <p><strong>Сроки:</strong> {new Date(p.startDate).toLocaleDateString()} — {new Date(p.plannedEndDate).toLocaleDateString()}</p>
-                
-                <div style={{ margin: '15px 0', padding: '10px', background: '#e9ecef', borderRadius: '4px' }}>
+                <p><strong>План:</strong> {translatePlanStatus(p.planStatus)}</p>
+                <div className={styles.participants}>
                   <strong>Участники ({p.Users?.length}):</strong>
-                  <ul style={{ paddingLeft: '20px', marginTop: '5px' }}>
-                    {p.Users?.map(u => <li key={u.id}>{u.Role?.name}: {u.fullName}</li>)}
+                  <ul>
+                    {p.Users?.map(u => <li key={u.id} className={styles.truncate}>{u.Role?.name}: {u.fullName}</li>)}
+                    {p.Users?.length === 0 && <li className={styles.noParticipants}>Не назначены</li>}
                   </ul>
                 </div>
+                <button onClick={() => navigate(`/project/${p.id}`)} className="btn-info" style={{ width: '100%' }}>Раскрыть проект</button>
               </div>
             ))}
           </div>
@@ -154,37 +149,48 @@ const AdminDashboard = () => {
       )}
 
       {activeTab === 'users' && (
-        <table className="admin-table">
-          <thead>
-            <tr><th>ID</th><th>Роль</th><th>ФИО</th><th>Email</th><th>Статус</th><th>Действия</th></tr>
-          </thead>
-          <tbody>
-            {users.map(u => (
-              <tr key={u.id}>
-                <td>{u.id}</td>
-                <td><strong>{u.Role?.name}</strong></td>
-                <td>{u.fullName}</td>
-                <td>{u.email}</td>
-                <td><span className={`status-badge ${u.status === 'active' ? 'status-active' : 'status-blocked'}`}>{u.status === 'active' ? 'Активен' : 'Заблокирован'}</span></td>
-                <td>
-                  {u.Role?.name !== 'Администратор' && (
-                    <>
-                      <button onClick={() => toggleUserStatus(u.id)} style={{ marginRight: '10px', background: u.status === 'active' ? '#ffc107' : '#28a745' }}>
-                        {u.status === 'active' ? 'Блокировать' : 'Разблокировать'}
-                      </button>
-                      <button onClick={() => deleteUser(u.id)} className="btn-danger">Удалить</button>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div>
+          <div className={styles.controlsRow}>
+            <button onClick={() => setCreateUserModalOpen(true)} className="btn-primary">+ Создать пользователя</button>
+            <input type="text" placeholder="Поиск по имени или email..." value={searchUser} onChange={e => setSearchUser(e.target.value)} className={styles.searchBar} />
+          </div>
+          <div className={styles.tableResponsive}>
+            <table className="admin-table">
+              <thead>
+                <tr><th>ID</th><th>Роль</th><th>ФИО</th><th>Email</th><th>Статус</th><th>Действия</th></tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map(u => (
+                  <tr key={u.id}>
+                    <td>{u.id}</td>
+                    <td><strong>{u.Role?.name}</strong></td>
+                    <td>{u.fullName}</td>
+                    <td>{u.email}</td>
+                    <td><span className={`status-badge ${u.status === 'active' ? 'status-active' : 'status-blocked'}`}>{u.status === 'active' ? 'Активен' : 'Заблокирован'}</span></td>
+                    <td>
+                      <div className={styles.actionButtonsContainer}>
+                        <button onClick={() => openEditUserModal(u)} className="btn-info">Редактировать</button>
+                        {u.Role?.name !== 'Администратор' && (
+                          <>
+                            <button onClick={() => toggleUserStatus(u.id)} className={u.status === 'active' ? 'btn-warning' : 'btn-success'}>
+                              {u.status === 'active' ? 'Блокировать' : 'Разблокировать'}
+                            </button>
+                            <button onClick={() => deleteUser(u.id)} className="btn-danger">Удалить</button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {activeTab === 'services' && (
         <div>
-          <button onClick={() => openServiceModal()} style={{ marginBottom: '20px', background: '#28a745', color: 'white' }}>+ Добавить услугу</button>
+          <button onClick={() => openServiceModal()} className="btn-primary" style={{marginBottom: '15px'}}>+ Добавить услугу</button>
           <table className="admin-table">
             <thead>
               <tr><th>Название</th><th>Описание</th><th>Действия</th></tr>
@@ -195,8 +201,10 @@ const AdminDashboard = () => {
                   <td><strong>{s.name}</strong></td>
                   <td>{s.description}</td>
                   <td>
-                    <button onClick={() => openServiceModal(s)} style={{ marginRight: '10px' }}>Редактировать</button>
-                    <button onClick={() => handleDeleteService(s.id)} className="btn-danger">Удалить</button>
+                    <div className={styles.actionButtonsContainer}>
+                      <button onClick={() => openServiceModal(s)} className="btn-info">Изменить</button>
+                      <button onClick={() => handleDeleteService(s.id)} className="btn-danger">Удалить</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -205,115 +213,10 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {isEditProjectModalOpen && editProject && (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.content}>
-            <h2>Редактировать проект</h2>
-            <form onSubmit={handleUpdateProject}>
-              <div className="form-group"><label>Название</label><input type="text" value={editProject.name} onChange={e => setEditProject({...editProject, name: e.target.value})} required /></div>
-              <div className="form-group"><label>Описание</label><textarea value={editProject.description} onChange={e => setEditProject({...editProject, description: e.target.value})} required /></div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div className="form-group" style={{ flex: 1 }}><label>Начало</label><input type="date" value={editProject.startDate?.split('T')[0] || ''} onChange={e => setEditProject({...editProject, startDate: e.target.value})} required /></div>
-                <div className="form-group" style={{ flex: 1 }}><label>Конец</label><input type="date" value={editProject.plannedEndDate?.split('T')[0] || ''} onChange={e => setEditProject({...editProject, plannedEndDate: e.target.value})} required /></div>
-              </div>
-              <div className="form-group"><label>Статус</label>
-                <select value={editProject.status} onChange={e => setEditProject({...editProject, status: e.target.value})}>
-                  <option value="active">Активен (В работе)</option>
-                  <option value="completed">Завершен</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Назначить Заказчика и Прораба</label>
-                <input type="text" placeholder="Поиск по имени или email..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ marginBottom: '10px' }} />
-                <div className="user-search-box">
-                  {users
-                    .filter(u => u.Role?.name !== 'Администратор')
-                    .filter(u => u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))
-                    .map(u => (
-                      <label key={u.id} className="user-checkbox-label">
-                        <input type="checkbox" value={u.id}
-                          checked={editProject.userIds?.includes(u.id.toString())}
-                          onChange={e => {
-                            const idStr = u.id.toString();
-                            const newIds = e.target.checked 
-                              ? [...(editProject.userIds || []), idStr] 
-                              : (editProject.userIds || []).filter(id => id !== idStr);
-                            setEditProject({ ...editProject, userIds: newIds });
-                          }}
-                        />
-                        {u.Role?.name}: {u.fullName} ({u.email})
-                      </label>
-                    ))}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <button type="submit" style={{ flex: 1 }}>Сохранить</button>
-                <button type="button" onClick={() => {setEditProjectModalOpen(false); setSearchTerm('');}} className="btn-danger" style={{ flex: 1 }}>Отмена</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isServiceModalOpen && (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.content}>
-            <h2>{serviceForm.id ? 'Редактировать услугу' : 'Новая услуга'}</h2>
-            <form onSubmit={handleSaveService}>
-              <div className="form-group"><label>Название</label><input type="text" value={serviceForm.name} onChange={e => setServiceForm({...serviceForm, name: e.target.value})} required /></div>
-              <div className="form-group"><label>Описание</label><textarea rows="4" value={serviceForm.description} onChange={e => setServiceForm({...serviceForm, description: e.target.value})} required /></div>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <button type="submit" style={{ flex: 1 }}>Сохранить</button>
-                <button type="button" onClick={() => setServiceModalOpen(false)} className="btn-danger" style={{ flex: 1 }}>Отмена</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isProjectModalOpen && (
-        <div style={modalStyles.overlay}>
-          <div style={modalStyles.content}>
-            <h2>Создать проект</h2>
-            <form onSubmit={handleCreateProject}>
-              <div className="form-group"><label>Название проекта</label><input type="text" required value={newProject.name} onChange={e => setNewProject({...newProject, name: e.target.value})} /></div>
-              <div className="form-group"><label>Описание</label><textarea value={newProject.description} onChange={e => setNewProject({...newProject, description: e.target.value})} /></div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div className="form-group" style={{ flex: 1 }}><label>Начало</label><input type="date" required value={newProject.startDate} onChange={e => setNewProject({...newProject, startDate: e.target.value})} /></div>
-                <div className="form-group" style={{ flex: 1 }}><label>Конец</label><input type="date" required value={newProject.plannedEndDate} onChange={e => setNewProject({...newProject, plannedEndDate: e.target.value})} /></div>
-              </div>
-              <div className="form-group">
-                <label>Назначить Заказчика и Прораба</label>
-                <input type="text" placeholder="Поиск по имени или email..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ marginBottom: '10px' }} />
-                <div className="user-search-box">
-                  {users
-                    .filter(u => u.Role?.name !== 'Администратор')
-                    .filter(u => u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))
-                    .map(u => (
-                      <label key={u.id} className="user-checkbox-label">
-                        <input type="checkbox" value={u.id}
-                          checked={newProject.userIds.includes(u.id.toString())}
-                          onChange={e => {
-                            const idStr = u.id.toString();
-                            const newIds = e.target.checked 
-                              ? [...newProject.userIds, idStr] 
-                              : newProject.userIds.filter(id => id !== idStr);
-                            setNewProject({ ...newProject, userIds: newIds });
-                          }}
-                        />
-                        {u.Role?.name}: {u.fullName} ({u.email})
-                      </label>
-                    ))}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <button type="submit" style={{ flex: 1 }}>Создать проект</button>
-                <button type="button" onClick={() => {setProjectModalOpen(false); setSearchTerm('');}} className="btn-danger" style={{ flex: 1 }}>Отмена</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ProjectModal isOpen={isProjectModalOpen} onClose={() => { setProjectModalOpen(false); setEditingProject(null); }} onSave={handleSaveProject} projectData={editingProject} users={users} />
+      <CreateUserModal isOpen={isCreateUserModalOpen} onClose={() => setCreateUserModalOpen(false)} onSave={handleCreateUser} roles={roles} />
+      <EditUserModal isOpen={isEditUserModalOpen} onClose={() => { setEditUserModalOpen(false); setEditingUser(null); }} onSave={handleUpdateUser} userData={editingUser} roles={roles} />
+      <ServiceModal isOpen={isServiceModalOpen} onClose={() => { setServiceModalOpen(false); setEditingService(null); }} onSave={handleSaveService} serviceData={editingService} />
     </div>
   );
 };

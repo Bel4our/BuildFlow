@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import styles from './Form.module.css';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -40,9 +41,9 @@ const Login = () => {
           <label>Пароль</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
         </div>
-        <button type="submit" style={{ width: '100%', marginTop: '10px' }}>Войти</button>
+        <button type="submit" className={styles.submitButton}>Войти</button>
       </form>
-      <p style={{ textAlign: 'center', marginTop: '20px' }}>
+      <p className={styles.redirectText}>
         Нет аккаунта? <Link to="/register">Создать</Link>
       </p>
     </div>

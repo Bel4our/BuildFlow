@@ -347,3 +347,18 @@ button:disabled {
 .msg-ticks.unread {
   color: #999;
 }
+
+
+.landing { text-align: center; }
+.hero { background: var(--dark-bg); color: white; padding: 100px 20px; }
+.hero h1 { font-size: 4em; color: var(--primary-color); margin-bottom: 20px; }
+.btn-main { background: var(--primary-color); padding: 15px 30px; border-radius: 5px; text-decoration: none; color: black; font-weight: bold; margin: 10px; display: inline-block; }
+.btn-sub { border: 2px solid white; padding: 13px 30px; border-radius: 5px; text-decoration: none; color: white; margin: 10px; display: inline-block; }
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; padding: 50px; }
+.feat-card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+
+.progress-container { background: #eee; border-radius: 10px; height: 10px; width: 100%; margin: 10px 0; overflow: hidden; }
+.progress-bar { background: var(--primary-color); height: 100%; transition: width 0.5s ease-in-out; }
+
+.lightbox-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 2000; cursor: pointer; }
+.lightbox-img { max-width: 90%; max-height: 90%; border: 3px solid white; }

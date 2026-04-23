@@ -1,28 +1,29 @@
 import express from 'express';
-import { 
-  createTask, 
-  getMyTasks, 
-  updateTask, 
-  approveStage 
-} from '../controllers/taskController.js';
 import { verifyToken, checkRole } from '../middleware/authMiddleware.js';
 import upload from '../middleware/uploadMiddleware.js';
-import { createStage, deleteStage } from '../controllers/taskController.js';
-
+import { 
+    createTask, getMyTasks, updateTask, approveStage, 
+    createStage, deleteStage, deleteTask, rejectStage, 
+    renameStage, editTask, deleteAttachment, rejectTask
+} from '../controllers/taskController.js';
 
 const router = express.Router();
 
-router.post('/', verifyToken, checkRole(['Администратор', 'Прораб']), createTask);
-
 router.get('/my', verifyToken, checkRole(['Прораб']), getMyTasks);
 
-router.put('/:id', verifyToken, checkRole(['Прораб']), upload.array('photos', 10), updateTask);
-
-router.put('/stage/:stageId/approve', verifyToken, checkRole(['Заказчик']), approveStage);
-
 router.post('/stage', verifyToken, checkRole(['Прораб', 'Администратор']), createStage);
-
 router.delete('/stage/:stageId', verifyToken, checkRole(['Прораб']), deleteStage);
+router.put('/stage/:stageId/approve', verifyToken, checkRole(['Заказчик']), approveStage);
+router.put('/stage/:stageId/reject', verifyToken, checkRole(['Заказчик']), rejectStage);
+router.put('/stage/:stageId/rename', verifyToken, checkRole(['Прораб', 'Администратор']), renameStage);
 
-router.post('/', verifyToken, checkRole(['Прораб', 'Администратор']), createTask);
+router.delete('/attachment/:id', verifyToken, checkRole(['Прораб', 'Администратор']), deleteAttachment);
+
+router.put('/:id/reject', verifyToken, checkRole(['Заказчик', 'Прораб']), rejectTask);
+router.put('/:id/edit', verifyToken, checkRole(['Прораб', 'Администратор']), editTask);
+
+router.post('/', verifyToken, checkRole(['Администратор', 'Прораб']), createTask);
+router.put('/:id', verifyToken, checkRole(['Прораб']), upload.array('photos', 10), updateTask);
+router.delete('/:id', verifyToken, checkRole(['Прораб', 'Администратор']), deleteTask);
+
 export default router;

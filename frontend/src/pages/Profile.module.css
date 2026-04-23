@@ -1,0 +1,19 @@
+.container { padding: 20px; }
+.profileCard { max-width: 500px; margin: 0 auto; text-align: left; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.profileHeader { text-align: center; margin-bottom: 30px; }
+.profileAvatar { width: 80px; height: 80px; border-radius: 50%; background-color: var(--primary-color, #ffc107); color: white; display: flex; justify-content: center; align-items: center; font-size: 2.5em; margin: 0 auto 15px; }
+.profileHeader h2 { margin: 0; color: #333; }
+.profileHeader p { color: #666; margin-top: 5px; }
+.telegramSection { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+.telegramSection h4 { color: #0d47a1; margin: 0 0 10px 0; }
+.telegramConnected { color: #28a745; font-weight: bold; margin-bottom: 20px; }
+.telegramButton { display: inline-block; background: #0088cc; color: white; padding: 10px 20px; border-radius: 20px; text-decoration: none; font-weight: bold; border: none; cursor: pointer; }
+.sectionTitle { border-bottom: 2px solid var(--primary-color, #ffc107); padding-bottom: 10px; margin-bottom: 20px; color: #333; background: transparent; }
+.passwordTitle { color: #666; margin-bottom: 15px; margin-top: 20px; border-bottom: 1px solid #eee; padding-bottom: 5px;}
+.passwordFields { display: flex; gap: 15px; }
+.saveButton { width: 100%; padding: 15px; font-size: 1.1em; margin-top: 10px; background: var(--primary-color, #ffc107); border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+.logoutButton { width: 100%; margin-top: 20px; padding: 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+.overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.content { background: white; padding: 30px; border-radius: 8px; width: 90%; max-width: 400px; }
+.modalButtons { display: flex; gap: 10px; margin-top: 20px; }
+.modalButtons button { padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }

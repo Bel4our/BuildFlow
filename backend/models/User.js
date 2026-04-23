@@ -22,6 +22,14 @@ const User = sequelize.define('User', {
   status: {
     type: DataTypes.STRING,
     defaultValue: 'active',
+  },
+  telegramId: {
+    type: DataTypes.STRING,
+    allowNull: true 
+  },
+  tgSettings: {
+    type: DataTypes.TEXT,
+    defaultValue: '{"global": true, "mutedProjects": []}'
   }
 }, {
   indexes: [

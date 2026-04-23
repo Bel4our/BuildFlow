@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import api from '../api/axios';
 import { useNavigate, Link } from 'react-router-dom';
+import styles from './Form.module.css';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ const Register = () => {
     if (formData.password.length < 6) tempErrors.password = "Пароль минимум 6 символов";
     if (formData.password !== formData.confirmPassword) tempErrors.confirmPassword = "Пароли не совпадают";
     setErrors(tempErrors);
-    return Object.keys(tempErrors).length === 0; // Возвращает true, если ошибок нет
+    return Object.keys(tempErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
@@ -81,9 +82,9 @@ const Register = () => {
           {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
         </div>
 
-        <button type="submit" style={{ width: '100%', marginTop: '10px' }}>Зарегистрироваться</button>
+        <button type="submit" className={styles.submitButton}>Зарегистрироваться</button>
       </form>
-      <p style={{ textAlign: 'center', marginTop: '20px' }}>
+      <p className={styles.redirectText}>
         Уже есть аккаунт? <Link to="/login">Войти</Link>
       </p>
     </div>

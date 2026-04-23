@@ -35,8 +35,6 @@ export const register = async (req, res) => {
   }
 };
 
-
-
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -52,8 +50,14 @@ export const login = async (req, res) => {
     if (!isPassValid) return res.status(400).json({ message: 'Неверный пароль' });
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.Role.name, fullName: user.fullName },
-      process.env.JWT_SECRET || 'secret_key_dev', 
+      { 
+        id: user.id, 
+        email: user.email, 
+        role: user.Role.name, 
+        fullName: user.fullName,
+        hasTelegram: !!user.telegramId 
+      },
+      process.env.JWT_SECRET, 
       { expiresIn: '24h' }
     );
 
@@ -63,29 +67,66 @@ export const login = async (req, res) => {
   }
 };
 
-
-
 export const updateProfile = async (req, res) => {
   try {
-    const { fullName, email, password } = req.body;
+    const { fullName, email, currentPassword, newPassword, confirmPassword } = req.body;
     const user = await User.findByPk(req.user.id, { include: Role });
-    
-    user.fullName = fullName || user.fullName;
-    user.email = email || user.email;
-    
-    if (password) {
-      user.passwordHash = await bcrypt.hash(password, 10);
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) return res.status(400).json({ message: 'Неверный текущий пароль' });
+
+    if (newPassword) {
+      if (newPassword !== confirmPassword) return res.status(400).json({ message: 'Новые пароли не совпадают' });
+      user.passwordHash = await bcrypt.hash(newPassword, 10);
     }
+
+    if (email && email !== user.email) {
+      const emailExists = await User.findOne({ where: { email } });
+      if (emailExists) return res.status(400).json({ message: 'Этот Email уже занят' });
+      user.email = email;
+    }
+
+    user.fullName = fullName || user.fullName;
     await user.save();
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.Role.name, fullName: user.fullName },
-      process.env.JWT_SECRET || 'my_fallback_secret_key',
-      { expiresIn: '24h' }
+      { id: user.id, email: user.email, role: user.Role.name, fullName: user.fullName, hasTelegram: !!user.telegramId },
+      process.env.JWT_SECRET, { expiresIn: '24h' }
     );
 
     res.json({ message: 'Профиль обновлен', token });
+  } catch (error) { res.status(500).json({ message: 'Ошибка сервера' }); }
+};
+
+export const disconnectTelegram = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, { include: Role });
+    user.telegramId = null;
+    await user.save();
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.Role.name, fullName: user.fullName, hasTelegram: false },
+      process.env.JWT_SECRET, { expiresIn: '24h' }
+    );
+
+    res.json({ message: 'Telegram отключен', token });
   } catch (error) {
-    res.status(500).json({ message: 'Ошибка обновления профиля' });
+    res.status(500).json({ message: 'Ошибка отключения Telegram' });
+  }
+};
+
+export const getMe = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
+    
+    res.json({
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      hasTelegram: !!user.telegramId 
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка получения профиля' });
   }
 };

@@ -4,18 +4,31 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import http from 'http';
+import { Server } from 'socket.io';
 import { Sequelize } from 'sequelize';
+
 import { sequelize, seedDatabase } from './models/index.js';
 import authRoutes from './routes/authRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import serviceRoutes from './routes/serviceRoutes.js';
+import initializeSocket from './services/socketService.js';
 
 dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
+const server = http.createServer(app);
+
+const io = new Server(server, {
+    cors: {
+      origin: "*", 
+      methods: ["GET", "POST"]
+    }
+});
+initializeSocket(io);
 
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -23,6 +36,11 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(uploadDir));
+
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
@@ -38,7 +56,7 @@ const startServer = async () => {
                 host: process.env.DB_SERVER,
                 dialect: 'mssql',
                 logging: false,
-                dialectOptions: { options: { encrypt: true, trustServerCertificate: true } }
+                dialectOptions: { options: { encrypt: false, trustServerCertificate: true } }
             });
 
             await masterSequelize.authenticate();
@@ -50,7 +68,7 @@ const startServer = async () => {
             await seedDatabase();
 
             console.log('БД готова. Запуск сервера...');
-            app.listen(process.env.PORT || 5000, '0.0.0.0', () => {
+            server.listen(process.env.PORT || 5000, '0.0.0.0', () => {
                 console.log(`СЕРВЕР РАБОТАЕТ НА ПОРТУ ${process.env.PORT || 5000}`);
             });
             break; 
