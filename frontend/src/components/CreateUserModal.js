@@ -1,28 +1,51 @@
 import React, { useState } from 'react';
+import styles from './Modals.module.css';
 
 const CreateUserModal = ({ isOpen, onClose, onSave, roles }) => {
-  const [newUserForm, setNewUserForm] = useState({ fullName: '', email: '', password: '', roleId: '' });
+  const [form, setForm] = useState({ fullName: '', email: '', password: '', roleId: '' });
+  const [err, setErr] = useState('');
 
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(newUserForm); 
+    if (!/^(?=.*[a-zA-Zа-яА-Я])(?=.*\d)(?=.*[^a-zA-Zа-яА-Я0-9]).{8,}$/.test(form.password)) {
+      setErr("Пароль: мин. 8 символов, 1 буква, 1 цифра, 1 спецсимвол");
+      return;
+    }
+    setErr('');
+    onSave(form);
+    setForm({ fullName: '', email: '', password: '', roleId: '' });
   };
+  
+  const handleChange = e => setForm({...form, [e.target.name]: e.target.value});
 
   return (
-    <div style={{ /* стили оверлея */ }}>
-      <div style={{ /* стили контента */ }}>
+    <div className={styles.overlay}>
+      <div className={styles.content}>
         <h2>Новый пользователь</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
+            <label>ФИО</label>
+            <input type="text" name="fullName" value={form.fullName} onChange={handleChange} required />
+          </div>
+          <div className="form-group">
+            <label>Email</label>
+            <input type="email" name="email" value={form.email} onChange={handleChange} required />
+          </div>
+          <div className="form-group">
+            <label>Пароль</label>
+            <input type="password" name="password" value={form.password} onChange={handleChange} required />
+            {err && <small style={{color: 'red'}}>{err}</small>}
+          </div>
+          <div className="form-group">
             <label>Роль</label>
-            <select value={newUserForm.roleId} onChange={e => setNewUserForm({...newUserForm, roleId: e.target.value})} required>
+            <select name="roleId" value={form.roleId} onChange={handleChange} required>
               <option value="">-- Выберите роль --</option>
               {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>
-          <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+          <div className={styles.flexRow} style={{ marginTop: '20px' }}>
             <button type="submit" style={{ flex: 1 }}>Создать</button>
             <button type="button" onClick={onClose} className="btn-danger" style={{ flex: 1 }}>Отмена</button>
           </div>

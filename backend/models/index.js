@@ -9,7 +9,6 @@ import ProjectStage from './ProjectStage.js';
 import Attachment from './Attachment.js';
 import Message from './Message.js';
 
-
 Role.hasMany(User, { foreignKey: 'roleId' });
 User.belongsTo(Role, { foreignKey: 'roleId' });
 
@@ -25,6 +24,9 @@ Task.belongsTo(ProjectStage, { foreignKey: 'stageId' });
 
 User.hasMany(Task, { foreignKey: 'assignedUserId' });
 Task.belongsTo(User, { foreignKey: 'assignedUserId', as: 'worker' });
+
+User.hasMany(Task, { foreignKey: 'transferToUserId', as: 'transferRequests' });
+Task.belongsTo(User, { foreignKey: 'transferToUserId', as: 'pendingTransferUser' });
 
 Task.hasMany(Attachment, { foreignKey: 'taskId', onDelete: 'CASCADE' });
 Attachment.belongsTo(Task, { foreignKey: 'taskId' });
@@ -57,7 +59,6 @@ const seedDatabase = async () => {
         roleId: adminRole.id,
         status: 'active'
       });
-      console.log(' Дефолтный администратор создан');
     }
 
     const servicesCount = await Service.count();
@@ -67,16 +68,9 @@ const seedDatabase = async () => {
         { name: 'Внутренняя отделка', description: 'Ремонт помещений, малярные и штукатурные работы.' },
         { name: 'Проектирование', description: 'Создание архитектурных и инженерных проектов.' }
       ]);
-      console.log(' Базовые услуги добавлены');
     }
 
-  } catch (error) {
-    console.error('Ошибка при сидировании БД:', error);
-  }
+  } catch (error) {}
 };
 
-export { 
-  sequelize, User, Role, Project, Task, 
-  Service, ProjectStage, Attachment, ProjectUsers, Message,
-  seedDatabase 
-};
+export { sequelize, User, Role, Project, Task, Service, ProjectStage, Attachment, ProjectUsers, Message, seedDatabase };

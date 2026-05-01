@@ -1,0 +1,238 @@
+
+Активные подключения
+
+  Имя    Локальный адрес        Внешний адрес          Состояние
+  TCP    0.0.0.0:135            DESKTOP-P1GMMIV:0      LISTENING
+  RpcSs
+ [svchost.exe]
+  TCP    0.0.0.0:445            DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    0.0.0.0:5040           DESKTOP-P1GMMIV:0      LISTENING
+  CDPSvc
+ [svchost.exe]
+  TCP    0.0.0.0:7680           DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    0.0.0.0:9993           DESKTOP-P1GMMIV:0      LISTENING
+ [zerotier-one_x64.exe]
+  TCP    0.0.0.0:9993           DESKTOP-P1GMMIV:0      LISTENING
+ [zerotier-one_x64.exe]
+  TCP    0.0.0.0:49664          DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    0.0.0.0:49665          DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    0.0.0.0:49666          DESKTOP-P1GMMIV:0      LISTENING
+  Schedule
+ [svchost.exe]
+  TCP    0.0.0.0:49667          DESKTOP-P1GMMIV:0      LISTENING
+  EventLog
+ [svchost.exe]
+  TCP    0.0.0.0:49668          DESKTOP-P1GMMIV:0      LISTENING
+ [spoolsv.exe]
+  TCP    0.0.0.0:49675          DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    26.173.56.132:139      DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    127.0.0.1:1434         DESKTOP-P1GMMIV:0      LISTENING
+ [sqlservr.exe]
+  TCP    127.0.0.1:24830        DESKTOP-P1GMMIV:0      LISTENING
+ [AsusSoftwareManager.exe]
+  TCP    127.0.0.1:49673        kubernetes:49674       ESTABLISHED
+ [zerotier-one_x64.exe]
+  TCP    127.0.0.1:49674        kubernetes:49673       ESTABLISHED
+ [zerotier-one_x64.exe]
+  TCP    127.0.0.1:49715        kubernetes:65001       ESTABLISHED
+ [nvcontainer.exe]
+  TCP    127.0.0.1:49720        DESKTOP-P1GMMIV:0      LISTENING
+ [NVIDIA Web Helper.exe]
+  TCP    127.0.0.1:49720        kubernetes:49741       ESTABLISHED
+ [NVIDIA Web Helper.exe]
+  TCP    127.0.0.1:49741        kubernetes:49720       ESTABLISHED
+ [NVIDIA Share.exe]
+  TCP    127.0.0.1:49821        DESKTOP-P1GMMIV:0      LISTENING
+ [AdskLicensingService.exe]
+  TCP    127.0.0.1:65001        DESKTOP-P1GMMIV:0      LISTENING
+ [nvcontainer.exe]
+  TCP    127.0.0.1:65001        kubernetes:49715       ESTABLISHED
+ [nvcontainer.exe]
+  TCP    192.168.1.13:139       DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    192.168.1.13:49408     98.66.133.186:https    ESTABLISHED
+  WpnService
+ [svchost.exe]
+  TCP    192.168.1.13:49786     4.208.35.46:https      ESTABLISHED
+ [msedgewebview2.exe]
+  TCP    192.168.1.13:50280     40.126.53.9:https      TIME_WAIT
+  TCP    192.168.1.13:50291     20.20.41.32:https      TIME_WAIT
+  TCP    192.168.56.1:139       DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    192.168.191.93:139     DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    [::]:135               DESKTOP-P1GMMIV:0      LISTENING
+  RpcSs
+ [svchost.exe]
+  TCP    [::]:445               DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    [::]:7680              DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    [::]:9993              DESKTOP-P1GMMIV:0      LISTENING
+ [zerotier-one_x64.exe]
+  TCP    [::]:49664             DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    [::]:49665             DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    [::]:49666             DESKTOP-P1GMMIV:0      LISTENING
+  Schedule
+ [svchost.exe]
+  TCP    [::]:49667             DESKTOP-P1GMMIV:0      LISTENING
+  EventLog
+ [svchost.exe]
+  TCP    [::]:49668             DESKTOP-P1GMMIV:0      LISTENING
+ [spoolsv.exe]
+  TCP    [::]:49675             DESKTOP-P1GMMIV:0      LISTENING
+ Не удается получить сведения о владельце
+  TCP    [::1]:1434             DESKTOP-P1GMMIV:0      LISTENING
+ [sqlservr.exe]
+  TCP    [::1]:42050            DESKTOP-P1GMMIV:0      LISTENING
+ [OneDrive.Sync.Service.exe]
+  UDP    0.0.0.0:3544           *:*                    
+  iphlpsvc
+ [svchost.exe]
+  UDP    0.0.0.0:5050           *:*                    
+  CDPSvc
+ [svchost.exe]
+  UDP    0.0.0.0:5353           *:*                    
+  Dnscache
+ [svchost.exe]
+  UDP    0.0.0.0:5355           *:*                    
+  Dnscache
+ [svchost.exe]
+  UDP    0.0.0.0:59962          *:*                    
+ [nvcontainer.exe]
+  UDP    0.0.0.0:61023          *:*                    
+  Dnscache
+ [svchost.exe]
+  UDP    0.0.0.0:65421          *:*                    
+  Dnscache
+ [svchost.exe]
+  UDP    26.173.56.132:137      *:*                    
+ Не удается получить сведения о владельце
+  UDP    26.173.56.132:138      *:*                    
+ Не удается получить сведения о владельце
+  UDP    26.173.56.132:1900     *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    26.173.56.132:5353     *:*                    
+ [nvcontainer.exe]
+  UDP    26.173.56.132:9993     *:*                    
+ [zerotier-one_x64.exe]
+  UDP    26.173.56.132:43610    *:*                    
+ [zerotier-one_x64.exe]
+  UDP    26.173.56.132:63567    *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    26.173.56.132:64821    *:*                    
+ [zerotier-one_x64.exe]
+  UDP    127.0.0.1:1900         *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    127.0.0.1:10010        *:*                    
+ [NVIDIA Web Helper.exe]
+  UDP    127.0.0.1:57704        127.0.0.1:57704        
+  iphlpsvc
+ [svchost.exe]
+  UDP    127.0.0.1:59395        *:*                    
+ [nvcontainer.exe]
+  UDP    127.0.0.1:63571        *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    192.168.1.13:137       *:*                    
+ Не удается получить сведения о владельце
+  UDP    192.168.1.13:138       *:*                    
+ Не удается получить сведения о владельце
+  UDP    192.168.1.13:1900      *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    192.168.1.13:5353      *:*                    
+ [nvcontainer.exe]
+  UDP    192.168.1.13:9993      *:*                    
+ [zerotier-one_x64.exe]
+  UDP    192.168.1.13:43610     *:*                    
+ [zerotier-one_x64.exe]
+  UDP    192.168.1.13:59534     *:*                    
+  iphlpsvc
+ [svchost.exe]
+  UDP    192.168.1.13:63570     *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    192.168.1.13:64821     *:*                    
+ [zerotier-one_x64.exe]
+  UDP    192.168.56.1:137       *:*                    
+ Не удается получить сведения о владельце
+  UDP    192.168.56.1:138       *:*                    
+ Не удается получить сведения о владельце
+  UDP    192.168.56.1:1900      *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    192.168.56.1:5353      *:*                    
+ [nvcontainer.exe]
+  UDP    192.168.56.1:9993      *:*                    
+ [zerotier-one_x64.exe]
+  UDP    192.168.56.1:43610     *:*                    
+ [zerotier-one_x64.exe]
+  UDP    192.168.56.1:63568     *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    192.168.56.1:64821     *:*                    
+ [zerotier-one_x64.exe]
+  UDP    192.168.191.93:137     *:*                    
+ Не удается получить сведения о владельце
+  UDP    192.168.191.93:138     *:*                    
+ Не удается получить сведения о владельце
+  UDP    192.168.191.93:1900    *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    192.168.191.93:5353    *:*                    
+ [nvcontainer.exe]
+  UDP    192.168.191.93:63569   *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    [::]:5353              *:*                    
+  Dnscache
+ [svchost.exe]
+  UDP    [::]:5355              *:*                    
+  Dnscache
+ [svchost.exe]
+  UDP    [::]:59963             *:*                    
+ [nvcontainer.exe]
+  UDP    [::]:61023             *:*                    
+  Dnscache
+ [svchost.exe]
+  UDP    [::]:65421             *:*                    
+  Dnscache
+ [svchost.exe]
+  UDP    [::1]:1900             *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    [::1]:5353             *:*                    
+ [nvcontainer.exe]
+  UDP    [::1]:63566            *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    [2001:0:284a:364:20bc:e876:da29:be5e]:9993  *:*                    
+ [zerotier-one_x64.exe]
+  UDP    [2001:0:284a:364:20bc:e876:da29:be5e]:43610  *:*                    
+ [zerotier-one_x64.exe]
+  UDP    [2001:0:284a:364:20bc:e876:da29:be5e]:64821  *:*                    
+ [zerotier-one_x64.exe]
+  UDP    [fe80::17ae:6804:d24e:ab91%10]:1900  *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    [fe80::17ae:6804:d24e:ab91%10]:63564  *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    [fe80::b3bd:cf0a:53e6:a408%14]:1900  *:*                    
+  SSDPSRV
+ [svchost.exe]
+  UDP    [fe80::b3bd:cf0a:53e6:a408%14]:63565  *:*                    
+  SSDPSRV
+ [svchost.exe]

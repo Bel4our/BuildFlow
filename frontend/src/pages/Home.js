@@ -1,7 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../api/axios';
 
 const Home = () => {
+  const [services, setServices] = useState([]);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const res = await api.get('/services');
+        setServices(res.data);
+      } catch (error) {}
+    };
+    fetchServices();
+  }, []);
+
   return (
     <div className="landing">
       <section className="hero">
@@ -31,6 +44,22 @@ const Home = () => {
           <p>Визуальный контроль готовности объекта в реальном времени.</p>
         </div>
       </section>
+
+      <div style={{ marginTop: '60px', paddingBottom: '60px' }}>
+        <h2 style={{ textAlign: 'center', color: 'black', marginBottom: '30px', fontSize: '2em' }}>Наши услуги</h2>
+        <section className="features">
+          {services.length > 0 ? (
+            services.map(service => (
+              <div key={service.id} className="feat-card">
+                <h3>{service.name}</h3>
+                <p>{service.description}</p>
+              </div>
+            ))
+          ) : (
+            <p style={{ textAlign: 'center', width: '100%', color: 'white' }}>Загрузка услуг...</p>
+          )}
+        </section>
+      </div>
     </div>
   );
 };

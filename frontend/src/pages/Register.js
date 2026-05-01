@@ -13,7 +13,9 @@ const Register = () => {
     let tempErrors = {};
     if (!formData.fullName.trim()) tempErrors.fullName = "Введите ваше имя";
     if (!/\S+@\S+\.\S+/.test(formData.email)) tempErrors.email = "Некорректный email";
-    if (formData.password.length < 6) tempErrors.password = "Пароль минимум 6 символов";
+    if (!/^(?=.*[a-zA-Zа-яА-Я])(?=.*\d)(?=.*[^a-zA-Zа-яА-Я0-9]).{8,}$/.test(formData.password)) {
+      tempErrors.password = "Пароль: мин. 8 символов, 1 буква, 1 цифра, 1 спецсимвол";
+    }
     if (formData.password !== formData.confirmPassword) tempErrors.confirmPassword = "Пароли не совпадают";
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;

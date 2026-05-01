@@ -2,9 +2,8 @@ import express from 'express';
 import { verifyToken, checkRole } from '../middleware/authMiddleware.js';
 import upload from '../middleware/uploadMiddleware.js';
 import { 
-    createTask, getMyTasks, updateTask, approveStage, 
-    createStage, deleteStage, deleteTask, rejectStage, 
-    renameStage, editTask, deleteAttachment, rejectTask
+    createTask, getMyTasks, updateTask, approveStage, createStage, deleteStage, deleteTask, rejectStage, 
+    renameStage, editTask, deleteAttachment, rejectTask, requestTransfer, acceptTransfer, rejectTransfer, adminReassignTask
 } from '../controllers/taskController.js';
 
 const router = express.Router();
@@ -21,6 +20,10 @@ router.delete('/attachment/:id', verifyToken, checkRole(['Прораб', 'Адм
 
 router.put('/:id/reject', verifyToken, checkRole(['Заказчик', 'Прораб']), rejectTask);
 router.put('/:id/edit', verifyToken, checkRole(['Прораб', 'Администратор']), editTask);
+router.put('/:id/transfer', verifyToken, checkRole(['Прораб']), requestTransfer);
+router.put('/:id/transfer/accept', verifyToken, checkRole(['Прораб']), acceptTransfer);
+router.put('/:id/transfer/reject', verifyToken, checkRole(['Прораб']), rejectTransfer);
+router.put('/:id/reassign', verifyToken, checkRole(['Администратор']), adminReassignTask);
 
 router.post('/', verifyToken, checkRole(['Администратор', 'Прораб']), createTask);
 router.put('/:id', verifyToken, checkRole(['Прораб']), upload.array('photos', 10), updateTask);

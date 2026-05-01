@@ -54,7 +54,7 @@ const ProjectModal = ({ isOpen, onClose, onSave, projectData, users }) => {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Название проекта</label>
-            <input type="text" required value={project.name} onChange={e => setProject({ ...project, name: e.target.value })} />
+            <input type="text" maxLength={150} required value={project.name} onChange={e => setProject({ ...project, name: e.target.value })} />
           </div>
           <div className="form-group">
             <label>Описание</label>

@@ -9,12 +9,7 @@ dotenv.config();
 const token = process.env.TELEGRAM_BOT_TOKEN;
 let bot = null;
 
-const planTranslations = {
-  draft: 'Черновик',
-  pending_approval: 'Ожидает утверждения',
-  approved: 'Утвержден',
-  rejected: 'Отклонен'
-};
+const planTranslations = { draft: 'Черновик', pending_approval: 'Ожидает утверждения', approved: 'Утвержден', rejected: 'Отклонен' };
 
 if (token && token !== 'secret') {
   bot = new TelegramBot(token, { polling: true });
@@ -33,20 +28,12 @@ if (token && token !== 'secret') {
     } catch (error) {}
   });
 
-  bot.onText(/\/start$/, (msg) => {
-    bot.sendMessage(msg.chat.id, 'Привяжите аккаунт через сайт BuildFlow.');
-  });
+  bot.onText(/\/start$/, (msg) => { bot.sendMessage(msg.chat.id, 'Привяжите аккаунт через сайт BuildFlow.'); });
 
   bot.onText(/\/status/, async (msg) => {
     const chatId = msg.chat.id;
     try {
-      const user = await User.findOne({ 
-        where: { telegramId: chatId.toString() },
-        include: [{
-          model: Project, as: 'Projects',
-          include: [{ model: ProjectStage, include: [{ model: Task }] }]
-        }]
-      });
+      const user = await User.findOne({ where: { telegramId: chatId.toString() }, include: [{ model: Project, as: 'Projects', include: [{ model: ProjectStage, include: [{ model: Task }] }] }] });
       if (!user) return;
       if (!user.Projects || user.Projects.length === 0) return bot.sendMessage(chatId, 'Нет активных проектов.');
 
@@ -67,19 +54,19 @@ if (token && token !== 'secret') {
       const user = await User.findOne({ where: { telegramId: chatId.toString() }, include: [{ model: Project, as: 'Projects' }] });
       if (!user) return;
       
-      const settings = JSON.parse(user.tgSettings);
-      const isGlobal = settings.global;
+      let settings = { global: true, mutedProjects: [] };
+      if (user.tgSettings) { try { settings = JSON.parse(user.tgSettings); } catch(e){} }
 
-      const keyboard = [
-        [{ text: isGlobal ? '🔕 Отключить уведомления' : '🔔 Включить уведомления', callback_data: 'toggle_global' }]
-      ];
+      const keyboard = [[{ text: settings.global ? '🔕 Выключить ВСЕ уведомления' : '🔔 Включить ВСЕ уведомления', callback_data: 'toggle_global' }]];
 
-      user.Projects.forEach(p => {
-        const isMuted = settings.mutedProjects.includes(p.id);
-        keyboard.push([{ text: `${isMuted ? '❌' : '✅'} ${p.name}`, callback_data: `toggle_proj_${p.id}` }]);
-      });
+      if (settings.global) {
+        user.Projects.forEach(p => {
+          const isMuted = settings.mutedProjects.includes(p.id);
+          keyboard.push([{ text: `${isMuted ? '❌' : '✅'} ${p.name}`, callback_data: `toggle_proj_${p.id}` }]);
+        });
+      }
 
-      bot.sendMessage(chatId, 'Настройки уведомлений:', { reply_markup: { inline_keyboard: keyboard } });
+      bot.sendMessage(chatId, 'Настройки уведомлений (✅ - включены, ❌ - выключены):', { reply_markup: { inline_keyboard: keyboard } });
     } catch (error) {}
   });
 
@@ -91,7 +78,9 @@ if (token && token !== 'secret') {
       if (data.startsWith('toggle_')) {
         const user = await User.findOne({ where: { telegramId: chatId.toString() }, include: [{ model: Project, as: 'Projects' }] });
         if (!user) return;
-        const settings = JSON.parse(user.tgSettings);
+        
+        let settings = { global: true, mutedProjects: [] };
+        if (user.tgSettings) { try { settings = JSON.parse(user.tgSettings); } catch(e){} }
 
         if (data === 'toggle_global') {
           settings.global = !settings.global;
@@ -107,11 +96,14 @@ if (token && token !== 'secret') {
         user.tgSettings = JSON.stringify(settings);
         await user.save();
 
-        const keyboard = [[{ text: settings.global ? '🔕 Отключить уведомления' : '🔔 Включить уведомления', callback_data: 'toggle_global' }]];
-        user.Projects.forEach(p => {
-          const isMuted = settings.mutedProjects.includes(p.id);
-          keyboard.push([{ text: `${isMuted ? '❌' : '✅'} ${p.name}`, callback_data: `toggle_proj_${p.id}` }]);
-        });
+        const keyboard = [[{ text: settings.global ? '🔕 Выключить ВСЕ уведомления' : '🔔 Включить ВСЕ уведомления', callback_data: 'toggle_global' }]];
+        
+        if (settings.global) {
+          user.Projects.forEach(p => {
+            const isMuted = settings.mutedProjects.includes(p.id);
+            keyboard.push([{ text: `${isMuted ? '❌' : '✅'} ${p.name}`, callback_data: `toggle_proj_${p.id}` }]);
+          });
+        }
 
         bot.editMessageReplyMarkup({ inline_keyboard: keyboard }, { chat_id: chatId, message_id: query.message.message_id });
         return bot.answerCallbackQuery(query.id);
@@ -124,6 +116,7 @@ if (token && token !== 'secret') {
         if (data.startsWith('approve_')) {
           if (stage.status === 'утверждено') return bot.answerCallbackQuery(query.id, { text: 'Уже утвержден', show_alert: true });
           stage.status = 'утверждено';
+          stage.actualEndDate = new Date();
           await stage.save();
           bot.editMessageText(query.message.text + '\n\n*ВЫ УТВЕРДИЛИ ЭТОТ ЭТАП*', { chat_id: chatId, message_id: query.message.message_id, parse_mode: 'Markdown' });
           const builders = stage.Project.Users.filter(u => u.Role.name === 'Прораб');
@@ -163,7 +156,7 @@ export const sendNotification = (userObj, text, projectId = null, options = {}) 
   try {
     let settings = { global: true, mutedProjects: [] };
     if (userObj.tgSettings) {
-      settings = JSON.parse(userObj.tgSettings);
+      try { settings = JSON.parse(userObj.tgSettings); } catch(e){}
     }
     
     if (!settings.global) return;

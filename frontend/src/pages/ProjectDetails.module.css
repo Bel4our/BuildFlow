@@ -3,7 +3,7 @@
 .sidebar { flex: 1; min-width: 300px; }
 .backButton { margin-bottom: 15px; background: #6c757d; color: white; }
 .projectCompletedBorder { border: 3px solid #28a745; }
-.projectCompletedTitle { color: #28a745; }
+.projectCompletedTitle { color: #28a745; margin: 0; padding: 0; word-wrap: break-word; }
 .projectDescription { color: #666; margin-top: 10px; }
 .progressSection { margin-top: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px; }
 .progressHeader { display: flex; justify-content: space-between; margin-bottom: 5px; }
@@ -17,8 +17,13 @@
 .actionButtons button { flex: 1; padding: 15px; }
 .finishProjectButton { width: 100%; padding: 20px; margin-top: 20px; font-size: 1.2em; background: #28a745; color: white; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4); }
 .stageCard { position: relative; }
-.stageCard h3 { background: none; color: #333; padding: 0 160px 10px 0; margin: 0 0 10px 0; word-wrap: break-word; }
-.stageActions { position: absolute; top: 15px; right: 15px; display: flex; gap: 10px; }
+.stageHeaderWrapper { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; margin-bottom: 10px; }
+.stageTitleBlock { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.stageTitleBlock h3 { margin: 0; padding: 0; word-wrap: break-word; }
+.deadline { font-size: 0.85em; color: #6c757d; font-weight: bold; }
+.overdue { font-size: 0.85em; color: #dc3545; font-weight: bold; }
+.onTime { font-size: 0.85em; color: #28a745; font-weight: bold; }
+.stageActions { display: flex; gap: 10px; flex-shrink: 0; }
 .actionLink { background: transparent; padding: 5px; border: none; cursor: pointer; color: #17a2b8; }
 .actionLinkDanger { color: #dc3545; }
 .stageProgress { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
@@ -27,21 +32,27 @@
 .tasksContainer { display: flex; flex-direction: column; gap: 10px; }
 .taskItem { padding: 15px; background: #f8f9fa; border-radius: 8px; border-left-width: 5px; border-left-style: solid; }
 .taskHeader { display: flex; justify-content: space-between; align-items: flex-start; }
-.taskHeader p { margin: 0; flex: 1; word-wrap: break-word; }
-.taskStatusControls { display: flex; gap: 10px; align-items: center; font-size: 0.9em; font-weight: bold; margin-left: 10px; }
-.attachments { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
+.taskDescText { margin: 0; flex: 1; word-wrap: break-word; }
+.taskStatusControls { display: flex; gap: 10px; align-items: center; font-size: 0.9em; font-weight: bold; margin-left: 10px; flex-shrink: 0; }
+.taskReportBlock { background: #e9ecef; padding: 10px; border-radius: 4px; margin-top: 10px; font-size: 0.9em; }
+.taskReportBlock strong { display: block; margin-bottom: 5px; color: #333; }
+.taskReportBlock p { margin: 0 0 10px 0; white-space: pre-wrap; word-wrap: break-word; }
+.attachments { display: flex; gap: 10px; flex-wrap: wrap; }
 .attachmentItem { position: relative; display: inline-block; }
 .attachments img { width: 80px; height: 80px; object-fit: cover; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; display: block; }
-.attachments a { display: inline-block; padding: 10px; background: #e9ecef; border-radius: 4px; text-decoration: none; color: #333; font-size: 0.9em; }
+.attachments a { display: inline-block; padding: 10px; background: white; border: 1px solid #ccc; border-radius: 4px; text-decoration: none; color: #333; font-size: 0.9em; }
 .deleteAttBtn { position: absolute; top: -5px; right: -5px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
 .completeTaskForm { margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px; }
+.reportInput { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; min-height: 60px; margin-bottom: 10px; box-sizing: border-box; }
+.transferAlert { background: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; margin-top: 10px; border: 1px solid #ffeeba; }
+.transferControlsContainer { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .addTaskContainer { margin-top: 15px; }
 .addTaskForm { display: flex; gap: 10px; }
-.addTaskForm input { flex: 1; padding: 8px; }
+.addTaskForm input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
 .stageApproved { margin-top: 15px; text-align: center; color: #28a745; font-weight: bold; }
 .addStageForm { display: flex; gap: 10px; background: #f8f9fa; }
-.addStageForm input { flex: 1; padding: 10px; }
-.chatContainer { height: calc(100vh - 120px); position: sticky; top: 20px; display: flex; flex-direction: column; padding: 15px; }
+.addStageForm input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+.chatContainer { height: calc(100vh - 120px); position: sticky; top: 20px; display: flex; flex-direction: column; padding: 15px; cursor: pointer; }
 .chatHeader { margin: 0 0 15px 0; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
 .chatBox { flex: 1; overflow-y: auto; margin-bottom: 15px; padding-right: 5px; }
 .noMessages { text-align: center; color: #999; margin-top: 50px; }
@@ -71,8 +82,9 @@
 .selectedFileItem { display: flex; flex-direction: column; justify-content: space-between; align-items: center; background: #e9ecef; padding: 5px; border-radius: 4px; font-size: 0.85em; position: relative;}
 .previewThumb { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; cursor: pointer; margin-bottom: 5px; }
 .removeFileBtn { cursor: pointer; color: white; background: #dc3545; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; position: absolute; top: -5px; right: -5px; font-size: 10px;}
-.inlineEditForm { display: flex; gap: 10px; margin-bottom: 10px; width: 100%; padding-right: 150px; box-sizing: border-box; }
-.inlineEditForm input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+.inlineEditForm { display: flex; flex-direction: row; gap: 10px; margin-bottom: 10px; width: 100%; box-sizing: border-box; flex-wrap: wrap;}
+.inlineEditForm input[type="text"] { flex: 2; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 200px;}
+.inlineEditForm input[type="date"] { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 120px;}
 .inlineEditFormTask { display: flex; flex-direction: column; gap: 10px; flex: 1; }
-.inlineEditFormTask textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; min-height: 60px; }
+.inlineEditFormTask textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; min-height: 60px; box-sizing: border-box; }
 .inlineEditActions { display: flex; gap: 10px; }

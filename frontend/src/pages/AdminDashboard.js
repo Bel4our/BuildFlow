@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { AuthContext } from '../context/AuthContext';
 import { translatePlanStatus } from '../utils/translations';
 import styles from './AdminDashboard.module.css';
 
@@ -11,6 +12,7 @@ import ServiceModal from '../components/admin/ServiceModal';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
   const [activeTab, setActiveTab] = useState('projects');
   
   const [projects, setProjects] = useState([]);
@@ -54,7 +56,7 @@ const AdminDashboard = () => {
       fetchData();
       setProjectModalOpen(false);
       setEditingProject(null);
-    } catch (error) { alert('Ошибка при сохранении проекта'); }
+    } catch (error) { alert(error.response?.data?.message || 'Ошибка при сохранении проекта'); }
   };
 
   const handleCreateUser = async (userData) => {
@@ -62,16 +64,19 @@ const AdminDashboard = () => {
       await api.post('/admin/users', userData);
       fetchData();
       setCreateUserModalOpen(false);
-    } catch (error) { alert('Ошибка создания пользователя'); }
+    } catch (error) { alert(error.response?.data?.message || 'Ошибка создания пользователя'); }
   };
 
   const handleUpdateUser = async (userData) => {
     try {
-      await api.put(`/admin/users/${userData.id}`, userData);
+      const res = await api.put(`/admin/users/${userData.id}`, userData);
       fetchData();
       setEditUserModalOpen(false);
       setEditingUser(null);
-    } catch (error) { alert('Ошибка обновления пользователя'); }
+      if (res.data.token) {
+        login(res.data.token);
+      }
+    } catch (error) { alert(error.response?.data?.message || 'Ошибка обновления пользователя'); }
   };
 
   const handleSaveService = async (serviceData) => {
