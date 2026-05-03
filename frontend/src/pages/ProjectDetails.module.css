@@ -1,7 +1,7 @@
 .container { padding: 20px; max-width: 1200px; margin: 0 auto; display: flex; gap: 20px; flex-wrap: wrap; }
 .mainContent { flex: 2; min-width: 60%; }
 .sidebar { flex: 1; min-width: 300px; }
-.backButton { margin-bottom: 15px; background: #6c757d; color: white; }
+.backButton { margin-bottom: 15px; background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
 .projectCompletedBorder { border: 3px solid #28a745; }
 .projectCompletedTitle { color: #28a745; margin: 0; padding: 0; word-wrap: break-word; }
 .projectDescription { color: #666; margin-top: 10px; }
@@ -12,11 +12,11 @@
 .planPending { background: #17a2b8; }
 .planRejected { background: #dc3545; }
 .planApproved { background: #28a745; }
-.submitPlanButton { width: 100%; padding: 15px; margin-top: 15px; font-size: 1.1em; background: #ffc107; color: black; }
+.submitPlanButton { width: 100%; padding: 15px; margin-top: 15px; font-size: 1.1em; background: #ffc107; color: black; border: none; border-radius: 4px; cursor: pointer; }
 .actionButtons { display: flex; gap: 10px; margin-top: 15px; }
-.actionButtons button { flex: 1; padding: 15px; }
-.finishProjectButton { width: 100%; padding: 20px; margin-top: 20px; font-size: 1.2em; background: #28a745; color: white; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4); }
-.stageCard { position: relative; }
+.actionButtons button { flex: 1; padding: 15px; border: none; border-radius: 4px; cursor: pointer; }
+.finishProjectButton { width: 100%; padding: 20px; margin-top: 20px; font-size: 1.2em; background: #28a745; color: white; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4); border: none; border-radius: 4px; cursor: pointer; }
+.stageCard { position: relative; margin-bottom: 15px; }
 .stageHeaderWrapper { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; margin-bottom: 10px; }
 .stageTitleBlock { display: flex; flex-direction: column; gap: 5px; flex: 1; }
 .stageTitleBlock h3 { margin: 0; padding: 0; word-wrap: break-word; }
@@ -24,13 +24,14 @@
 .overdue { font-size: 0.85em; color: #dc3545; font-weight: bold; }
 .onTime { font-size: 0.85em; color: #28a745; font-weight: bold; }
 .stageActions { display: flex; gap: 10px; flex-shrink: 0; }
-.actionLink { background: transparent; padding: 5px; border: none; cursor: pointer; color: #17a2b8; }
+.actionLink { background: transparent; padding: 5px; border: none; cursor: pointer; color: #17a2b8; font-size: 1.2em; }
 .actionLinkDanger { color: #dc3545; }
 .stageProgress { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
 .stageProgress .progress-container { margin: 0; flex: 1; }
 .stageProgress span { font-weight: bold; }
 .tasksContainer { display: flex; flex-direction: column; gap: 10px; }
-.taskItem { padding: 15px; background: #f8f9fa; border-radius: 8px; border-left-width: 5px; border-left-style: solid; }
+.taskItem { padding: 15px; background: #f8f9fa; border-radius: 8px; border-left-width: 5px; border-left-style: solid; transition: background-color 0.3s ease; }
+.highlight { background-color: #fff3cd !important; }
 .taskHeader { display: flex; justify-content: space-between; align-items: flex-start; }
 .taskDescText { margin: 0; flex: 1; word-wrap: break-word; }
 .taskStatusControls { display: flex; gap: 10px; align-items: center; font-size: 0.9em; font-weight: bold; margin-left: 10px; flex-shrink: 0; }
@@ -44,14 +45,17 @@
 .deleteAttBtn { position: absolute; top: -5px; right: -5px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
 .completeTaskForm { margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px; }
 .reportInput { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; min-height: 60px; margin-bottom: 10px; box-sizing: border-box; }
-.transferAlert { background: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; margin-top: 10px; border: 1px solid #ffeeba; }
+.transferAlert { background: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #ffeeba; }
 .transferControlsContainer { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .addTaskContainer { margin-top: 15px; }
 .addTaskForm { display: flex; gap: 10px; }
 .addTaskForm input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+.addTaskForm button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; background: #28a745; color: white; font-weight: bold; }
+.addTaskForm button.btn-danger { background: #dc3545; }
 .stageApproved { margin-top: 15px; text-align: center; color: #28a745; font-weight: bold; }
-.addStageForm { display: flex; gap: 10px; background: #f8f9fa; }
+.addStageForm { display: flex; gap: 10px; background: #f8f9fa; padding: 15px; border-radius: 8px; }
 .addStageForm input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+.addStageForm button { padding: 10px 20px; border: none; border-radius: 4px; background: #ffc107; cursor: pointer; font-weight: bold; }
 .chatContainer { height: calc(100vh - 120px); position: sticky; top: 20px; display: flex; flex-direction: column; padding: 15px; cursor: pointer; }
 .chatHeader { margin: 0 0 15px 0; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
 .chatBox { flex: 1; overflow-y: auto; margin-bottom: 15px; padding-right: 5px; }
@@ -69,7 +73,7 @@
 .chatForm { display: flex; flex-direction: column; gap: 5px; }
 .chatInputWrapper { display: flex; gap: 10px; align-items: center; }
 .chatInputWrapper input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ccc; }
-.chatInputWrapper button { border-radius: 50%; width: 40px; height: 40px; padding: 0; line-height: 40px; }
+.chatInputWrapper button { border: none; cursor: pointer; background: #007bff; color: white; font-weight: bold; }
 .charCounter { text-align: right; font-size: 0.7em; padding-right: 60px; }
 .lightboxOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 2000; }
 .lightboxImg { max-width: 90%; max-height: 90%; object-fit: contain; }
@@ -88,3 +92,13 @@
 .inlineEditFormTask { display: flex; flex-direction: column; gap: 10px; flex: 1; }
 .inlineEditFormTask textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; min-height: 60px; box-sizing: border-box; }
 .inlineEditActions { display: flex; gap: 10px; }
+.topAlertContainer { margin-bottom: 20px; }
+.orderButtons { display: flex; flex-direction: column; gap: 2px; margin-right: 5px; }
+.orderButtons button { background: #e9ecef; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 2px 5px; font-size: 0.8em; line-height: 1; }
+.orderButtons button:disabled { opacity: 0.5; cursor: default; }
+.highlightPending { border: 2px solid #ffc107; box-shadow: 0 0 10px rgba(255, 193, 7, 0.3); }
+.teamInfoBox { background: #e9ecef; padding: 15px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px; }
+.teamInfoBox h4 { margin: 0 0 10px 0; }
+.teamInfoBox p { margin: 0 0 5px 0; }
+.warningBanner { background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px; border: 1px solid #ffeeba; font-weight: bold; text-align: center; }
+.taskLowerControls { margin-top: 10px; display: flex; gap: 10px; }

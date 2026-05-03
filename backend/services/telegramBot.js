@@ -1,5 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { User, Project, ProjectStage, Task, Attachment, Role } from '../models/index.js';
+import { Op } from 'sequelize';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
@@ -14,21 +15,97 @@ const planTranslations = { draft: 'Черновик', pending_approval: 'Ожи�
 if (token && token !== 'secret') {
   bot = new TelegramBot(token, { polling: true });
 
+  const setRegularUserCommands = () => {
+    bot.setMyCommands([
+      { command: '/status', description: '📊 Узнать прогресс' },
+      { command: '/settings', description: '⚙️ Настройки уведомлений' },
+      { command: '/start', description: '🔗 Привязать/Сменить аккаунт' }
+    ]);
+  };
+
+  const setAdminCommands = () => {
+    bot.setMyCommands([
+      { command: '/projects', description: '📁 Список/поиск проектов' },
+      { command: '/users', description: '👥 Список/поиск пользователей' },
+      { command: '/start', description: '🔗 Привязать/Сменить аккаунт' }
+    ]);
+  };
+
   bot.onText(/\/start (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const userId = match[1]; 
     try {
-      const user = await User.findByPk(userId);
+      const user = await User.findByPk(userId, { include: [Role] });
        if (user) {
         await User.update({ telegramId: null }, { where: { telegramId: chatId.toString() } });
         user.telegramId = chatId.toString();
         await user.save();
-        bot.sendMessage(chatId, `Отлично, ${user.fullName}! Ваш аккаунт успешно привязан.\n\n/status - Узнать прогресс\n/settings - Настройки уведомлений`);
+        
+        let text = `Отлично, ${user.fullName}! Ваш аккаунт успешно привязан.\nВаша роль: *${user.Role.name}*.\n\n`;
+        if (user.Role.name === 'Администратор') {
+          setAdminCommands();
+          text += `Вам доступны команды для поиска:\n/projects [название]\n/users [имя/email]`;
+        } else {
+          setRegularUserCommands();
+          text += `Используйте меню команд для навигации.`;
+        }
+        bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
       }
     } catch (error) {}
   });
 
   bot.onText(/\/start$/, (msg) => { bot.sendMessage(msg.chat.id, 'Привяжите аккаунт через сайт BuildFlow.'); });
+
+  bot.onText(/\/projects(?:\s+(.+))?/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const searchQuery = match[1];
+    try {
+      const user = await User.findOne({ where: { telegramId: chatId.toString() }, include: [Role] });
+      if (!user || user.Role.name !== 'Администратор') return bot.sendMessage(chatId, '❌ Эта команда доступна только администраторам.');
+      
+      let whereClause = {};
+      if (searchQuery) {
+        whereClause = { name: { [Op.like]: `%${searchQuery}%` } };
+      }
+
+      const projects = await Project.findAll({ where: whereClause, limit: 10, order: [['createdAt', 'DESC']] });
+      if (projects.length === 0) return bot.sendMessage(chatId, searchQuery ? 'Проекты по вашему запросу не найдены.' : 'Проектов нет.');
+      
+      let text = searchQuery ? `*Результаты поиска по "${searchQuery}" (${projects.length}):*\n\n` : '*Последние 10 проектов в системе:*\n\n';
+      projects.forEach(p => {
+        text += `🔹 *${p.name}*\nСтатус: ${p.status === 'active' ? 'В работе' : 'Завершен'}\n\n`;
+      });
+      bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+    } catch (error) {}
+  });
+
+  bot.onText(/\/users(?:\s+(.+))?/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const searchQuery = match[1];
+    try {
+      const user = await User.findOne({ where: { telegramId: chatId.toString() }, include: [Role] });
+      if (!user || user.Role.name !== 'Администратор') return bot.sendMessage(chatId, '❌ Эта команда доступна только администраторам.');
+      
+      let whereClause = {};
+      if (searchQuery) {
+        whereClause = {
+          [Op.or]: [
+            { fullName: { [Op.like]: `%${searchQuery}%` } },
+            { email: { [Op.like]: `%${searchQuery}%` } }
+          ]
+        };
+      }
+
+      const usersList = await User.findAll({ where: whereClause, include: [Role], limit: 10, order: [['id', 'DESC']] });
+      if (usersList.length === 0) return bot.sendMessage(chatId, searchQuery ? 'Пользователи по вашему запросу не найдены.' : 'Пользователей нет.');
+
+      let text = searchQuery ? `*Результаты поиска по "${searchQuery}" (${usersList.length}):*\n\n` : '*Последние 10 пользователей:*\n\n';
+      usersList.forEach(u => {
+        text += `👤 ${u.fullName} - _${u.Role.name}_\n`;
+      });
+      bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+    } catch (error) {}
+  });
 
   bot.onText(/\/status/, async (msg) => {
     const chatId = msg.chat.id;
@@ -37,7 +114,7 @@ if (token && token !== 'secret') {
       if (!user) return;
       if (!user.Projects || user.Projects.length === 0) return bot.sendMessage(chatId, 'Нет активных проектов.');
 
-      let text = `*Сводка по проектам:*\n\n`;
+      let text = `*Сводка по вашим проектам:*\n\n`;
       user.Projects.forEach(p => {
         const allTasks = p.ProjectStages.flatMap(s => s.Tasks);
         const completed = allTasks.filter(t => t.status === 'выполнена').length;
@@ -82,9 +159,8 @@ if (token && token !== 'secret') {
         let settings = { global: true, mutedProjects: [] };
         if (user.tgSettings) { try { settings = JSON.parse(user.tgSettings); } catch(e){} }
 
-        if (data === 'toggle_global') {
-          settings.global = !settings.global;
-        } else if (data.startsWith('toggle_proj_')) {
+        if (data === 'toggle_global') settings.global = !settings.global;
+        else if (data.startsWith('toggle_proj_')) {
           const pid = parseInt(data.replace('toggle_proj_', ''));
           if (settings.mutedProjects.includes(pid)) {
             settings.mutedProjects = settings.mutedProjects.filter(id => id !== pid);
@@ -119,16 +195,14 @@ if (token && token !== 'secret') {
           stage.actualEndDate = new Date();
           await stage.save();
           bot.editMessageText(query.message.text + '\n\n*ВЫ УТВЕРДИЛИ ЭТОТ ЭТАП*', { chat_id: chatId, message_id: query.message.message_id, parse_mode: 'Markdown' });
-          const builders = stage.Project.Users.filter(u => u.Role.name === 'Прораб');
-          builders.forEach(b => sendNotification(b, `Заказчик утвердил этап *"${stage.name}"*!`, stage.Project.id, { parse_mode: 'Markdown' }));
+          broadcastToProject(stage.Project.id, ['Прораб'], `✅ Заказчик утвердил этап *"${stage.name}"*!`, { parse_mode: 'Markdown' });
           bot.answerCallbackQuery(query.id, { text: 'Утвержден!' });
         } else {
           stage.status = 'в работе';
           await stage.save();
-          for (let task of stage.Tasks) { task.status = 'в работе'; await task.save(); }
+          for (let task of stage.Tasks) { if(task.status==='выполнена') {task.status = 'в работе'; await task.save(); }}
           bot.editMessageText(query.message.text + '\n\n*ВЫ ОТКЛОНИЛИ ЭТОТ ЭТАП*', { chat_id: chatId, message_id: query.message.message_id, parse_mode: 'Markdown' });
-          const builders = stage.Project.Users.filter(u => u.Role.name === 'Прораб');
-          builders.forEach(b => sendNotification(b, `Заказчик *ОТКЛОНИЛ* этап "${stage.name}".`, stage.Project.id, { parse_mode: 'Markdown' }));
+          broadcastToProject(stage.Project.id, ['Прораб'], `❌ Заказчик *ОТКЛОНИЛ* этап "${stage.name}". Задачи возвращены в работу.`, { parse_mode: 'Markdown' });
           bot.answerCallbackQuery(query.id, { text: 'Отклонен!' });
         }
       }
@@ -152,18 +226,27 @@ if (token && token !== 'secret') {
 
 export const sendNotification = (userObj, text, projectId = null, options = {}) => {
   if (!bot || !userObj || !userObj.telegramId) return;
-  
   try {
     let settings = { global: true, mutedProjects: [] };
     if (userObj.tgSettings) {
       try { settings = JSON.parse(userObj.tgSettings); } catch(e){}
     }
-    
     if (!settings.global) return;
     if (projectId && settings.mutedProjects.includes(parseInt(projectId))) return;
-
     bot.sendMessage(userObj.telegramId, text, options);
   } catch (e) {}
+};
+
+export const broadcastToProject = async (projectId, rolesToNotify, text, options = {}) => {
+  try {
+    const project = await Project.findByPk(projectId, { include: [{ model: User, as: 'Users', include: [Role] }] });
+    if (!project) return;
+    const recipients = new Map();
+    project.Users.forEach(u => {
+      if (rolesToNotify.includes(u.Role.name)) recipients.set(u.id, u);
+    });
+    recipients.forEach(userObj => sendNotification(userObj, text, projectId, options));
+  } catch (error) { console.error(error); }
 };
 
 export default bot;

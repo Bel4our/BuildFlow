@@ -3,7 +3,7 @@ import { verifyToken, checkRole } from '../middleware/authMiddleware.js';
 import upload from '../middleware/uploadMiddleware.js';
 import { 
     createTask, getMyTasks, updateTask, approveStage, createStage, deleteStage, deleteTask, rejectStage, 
-    renameStage, editTask, deleteAttachment, rejectTask, requestTransfer, acceptTransfer, rejectTransfer, adminReassignTask
+    renameStage, editTask, deleteAttachment, rejectTask, requestTransfer, acceptTransfer, rejectTransfer, adminReassignTask, cancelTransfer 
 } from '../controllers/taskController.js';
 
 const router = express.Router();
@@ -28,5 +28,6 @@ router.put('/:id/reassign', verifyToken, checkRole(['Администратор'
 router.post('/', verifyToken, checkRole(['Администратор', 'Прораб']), createTask);
 router.put('/:id', verifyToken, checkRole(['Прораб']), upload.array('photos', 10), updateTask);
 router.delete('/:id', verifyToken, checkRole(['Прораб', 'Администратор']), deleteTask);
+router.put('/:id/transfer/cancel', verifyToken, checkRole(['Прораб']), cancelTransfer);
 
 export default router;

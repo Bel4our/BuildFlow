@@ -61,3 +61,33 @@
 .statusBadge.новая { background-color: #17a2b8; }
 .statusBadge.в_работе { background-color: #ffc107; color: black; }
 .statusBadge.выполнена { background-color: #28a745; }
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(150px, 300px) 1fr minmax(120px, 200px);
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.filterSelect, .searchInput {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 1em;
+  height: 42px;
+}
+
+.filterSelect {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+  .filters {
+    grid-template-columns: 1fr;
+  }
+}

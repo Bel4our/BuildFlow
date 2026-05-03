@@ -2,5 +2,6 @@
 .projectCard { cursor: pointer; transition: transform 0.2s; border-left-width: 5px; border-left-style: solid; border-left-color: transparent; display: flex; flex-direction: column;}
 .projectCard:hover { transform: translateY(-5px); }
 .projectCard h3 { margin: 0 0 10px 0; background: none; padding: 0; color: var(--primary-color); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.attentionText { color: #17a2b8; font-weight: bold; font-size: 0.9em; margin-top: 10px; }
+.projectCard p { color: #666; margin-bottom: 5px; }
+.attentionText { color: #ffc107; font-weight: bold; font-size: 0.9em; margin-top: 10px; }
 .projectCard button { width: 100%; margin-top: auto; padding-top: 10px; }

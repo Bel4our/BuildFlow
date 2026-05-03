@@ -9,6 +9,7 @@ import ProjectModal from '../components/admin/ProjectModal';
 import CreateUserModal from '../components/admin/CreateUserModal';
 import EditUserModal from '../components/admin/EditUserModal';
 import ServiceModal from '../components/admin/ServiceModal';
+import ConfirmModal from '../components/common/ConfirmModal';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ const AdminDashboard = () => {
   const [isServiceModalOpen, setServiceModalOpen] = useState(false);
   const [isCreateUserModalOpen, setCreateUserModalOpen] = useState(false);
   const [isEditUserModalOpen, setEditUserModalOpen] = useState(false);
+  const [modalState, setModalState] = useState({ isOpen: false, type: null, item: null });
 
   const [editingProject, setEditingProject] = useState(null);
   const [editingService, setEditingService] = useState(null);
@@ -88,24 +90,28 @@ const AdminDashboard = () => {
       setEditingService(null);
     } catch (error) {}
   };
+  
+  const confirmAction = async () => {
+    const { type, item } = modalState;
+    try {
+        if (type === 'deleteUser') {
+            await api.delete(`/admin/users/${item.id}`);
+        } else if (type === 'deleteService') {
+            await api.delete(`/services/${item.id}`);
+        } else if (type === 'deleteProject') {
+            await api.delete(`/projects/${item.id}`);
+        }
+        fetchData();
+    } catch (err) {
+        alert(err.response?.data?.message || 'Произошла ошибка');
+    } finally {
+        setModalState({ isOpen: false, type: null, item: null });
+    }
+  };
 
   const toggleUserStatus = async (id) => {
     try { await api.put(`/admin/users/${id}/status`); fetchData(); } 
     catch (error) { alert('Ошибка смены статуса'); }
-  };
-
-  const deleteUser = async (id) => {
-    if(window.confirm('Точно удалить?')) {
-      try { await api.delete(`/admin/users/${id}`); fetchData(); } 
-      catch (error) { alert('Ошибка удаления'); }
-    }
-  };
-
-  const handleDeleteService = async (id) => {
-    if(window.confirm('Удалить?')) {
-      try { await api.delete(`/services/${id}`); fetchData(); } 
-      catch (error) {}
-    }
   };
 
   const openProjectModal = (project = null) => { setEditingProject(project); setProjectModalOpen(true); };
@@ -117,6 +123,14 @@ const AdminDashboard = () => {
 
   return (
     <div className={styles.container}>
+      <ConfirmModal 
+        isOpen={modalState.isOpen}
+        onClose={() => setModalState({ isOpen: false, type: null, item: null })}
+        onConfirm={confirmAction}
+        title={modalState.type === 'deleteUser' ? "Удалить пользователя?" : modalState.type === 'deleteService' ? "Удалить услугу?" : "Удалить проект?"}
+        message="Это действие нельзя будет отменить."
+      />
+
       <h1>Панель Администратора</h1>
       <div className="tabs">
         <button className={`tab ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}>Проекты</button>
@@ -135,7 +149,12 @@ const AdminDashboard = () => {
               <div className="card" key={p.id}>
                 <div className={styles.cardHeader}>
                   <h3 className={`${styles.cardTitle} ${styles.truncateMultiline}`} title={p.name}>{p.name}</h3>
-                  <button onClick={() => openProjectModal(p)} className="btn-secondary">Изменить</button>
+                  <div style={{display:'flex', gap:'5px', flexShrink: 0}}>
+                    <button onClick={() => openProjectModal(p)} className="btn-secondary">Изменить</button>
+                    {p.planStatus === 'draft' && (
+                      <button onClick={() => setModalState({ isOpen: true, type: 'deleteProject', item: p })} className="btn-danger">✕</button>
+                    )}
+                  </div>
                 </div>
                 <p><strong>Статус:</strong> <span className={`status-badge ${p.status === 'active' ? 'status-active' : 'status-blocked'}`}>{p.status === 'active' ? 'Активен' : 'Завершен'}</span></p>
                 <p><strong>План:</strong> {translatePlanStatus(p.planStatus)}</p>
@@ -180,7 +199,7 @@ const AdminDashboard = () => {
                             <button onClick={() => toggleUserStatus(u.id)} className={u.status === 'active' ? 'btn-warning' : 'btn-success'}>
                               {u.status === 'active' ? 'Блокировать' : 'Разблокировать'}
                             </button>
-                            <button onClick={() => deleteUser(u.id)} className="btn-danger">Удалить</button>
+                            <button onClick={() => setModalState({ isOpen: true, type: 'deleteUser', item: u })} className="btn-danger">Удалить</button>
                           </>
                         )}
                       </div>
@@ -208,7 +227,7 @@ const AdminDashboard = () => {
                   <td>
                     <div className={styles.actionButtonsContainer}>
                       <button onClick={() => openServiceModal(s)} className="btn-info">Изменить</button>
-                      <button onClick={() => handleDeleteService(s.id)} className="btn-danger">Удалить</button>
+                      <button onClick={() => setModalState({ isOpen: true, type: 'deleteService', item: s })} className="btn-danger">Удалить</button>
                     </div>
                   </td>
                 </tr>

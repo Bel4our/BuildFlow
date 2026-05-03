@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import http from 'http';
 import { Server } from 'socket.io';
 import { Sequelize } from 'sequelize';
+import { MulterError } from 'multer';
 
 import { sequelize, seedDatabase } from './models/index.js';
 import authRoutes from './routes/authRoutes.js';
@@ -14,6 +15,7 @@ import projectRoutes from './routes/projectRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import serviceRoutes from './routes/serviceRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
 import initializeSocket from './services/socketService.js';
 
 dotenv.config();
@@ -47,6 +49,17 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/services', serviceRoutes);
+app.use('/api/order', orderRoutes);
+
+app.use((err, req, res, next) => {
+    if (err instanceof MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ message: 'Файл слишком большой. Максимальный размер - 10 МБ.' });
+        }
+    }
+    next(err);
+});
+
 
 const startServer = async () => {
     while (true) { 

@@ -1,4 +1,4 @@
-import { User, Role } from '../models/index.js';
+import { User, Role, Project } from '../models/index.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Op } from 'sequelize';
@@ -38,8 +38,15 @@ export const updateUserInfo = async (req, res) => {
     const { id } = req.params;
     const { fullName, email, roleId } = req.body;
     
-    const user = await User.findByPk(id);
+    const user = await User.findByPk(id, { include: Role });
     if (!user) return res.status(404).json({ message: 'Не найден' });
+
+    if (user.roleId !== parseInt(roleId) && user.Role.name === 'Прораб') {
+      const activeProjects = await user.getProjects({ where: { status: 'active' } });
+      if (activeProjects.length > 0) {
+        return res.status(403).json({ message: 'Нельзя изменить роль прорабу, пока у него есть незавершенные проекты.' });
+      }
+    }
     
     if (req.user.id === parseInt(id) && user.roleId !== parseInt(roleId)) {
       return res.status(403).json({ message: 'Нельзя изменить собственную роль' });

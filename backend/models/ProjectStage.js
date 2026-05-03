@@ -9,5 +9,9 @@ export default sequelize.define('ProjectStage', {
   status: { 
     type: DataTypes.STRING, 
     defaultValue: 'в работе' 
+  },
+  order: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
   }
 });

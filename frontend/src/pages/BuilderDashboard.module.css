@@ -9,7 +9,8 @@
 .completed h2 { color: #155724; }
 .rate { background: #fff3cd; }
 .rate h2 { color: #856404; }
-.projectCard { cursor: pointer; transition: transform 0.2s; display: flex; flex-direction: column; }
+.projectCard { cursor: pointer; transition: transform 0.2s; border-left-width: 5px; border-left-style: solid; border-left-color: var(--primary-color); display: flex; flex-direction: column; }
 .projectCard:hover { transform: translateY(-5px); }
-.projectCard h3 { margin: 0 0 10px 0; color: var(--text-dark); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.projectCard h3 { margin: 0 0 10px 0; background: none; padding: 0; color: var(--primary-color); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.projectCard p { color: #666; margin-bottom: 5px; }
 .projectCard button { width: 100%; margin-top: auto; padding-top: 10px; }

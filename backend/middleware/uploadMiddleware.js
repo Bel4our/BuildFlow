@@ -17,12 +17,15 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.match(/\/(jpeg|jpg|png|pdf|msword|vnd.openxmlformats-officedocument.wordprocessingml.document|zip|x-autocad)$/)) {
-    cb(null, true);
-  } else {
-    cb(null, true); 
-  }
+  cb(null, true);
 };
 
-const upload = multer({ storage, fileFilter });
+const upload = multer({ 
+  storage, 
+  fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 
+  }
+});
+
 export default upload;
