@@ -38,7 +38,6 @@ export const updateTask = async (req, res) => {
     
     if (!task) return res.status(404).json({ message: 'Задача не найдена' });
 
-    // УВЕДОМЛЕНИЕ О ВЗЯТИИ ЗАДАЧИ В РАБОТУ
     if (status && status === 'в работе' && task.status === 'новая') {
       broadcastToProject(task.ProjectStage.Project.id, ['Заказчик'], `▶️ Прораб взял в работу задачу:\n"${task.description}"\n(Проект: ${task.ProjectStage.Project.name})`);
     }

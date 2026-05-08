@@ -42,15 +42,14 @@ Message.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
 
 const seedDatabase = async () => {
   try {
-    const roles = ['Гость', 'Заказчик', 'Прораб', 'Администратор'];
-    for (const roleName of roles) {
-      await Role.findOrCreate({ where: { name: roleName } });
-    }
+    await Role.findOrCreate({ where: { name: 'Гость' } });
+    await Role.findOrCreate({ where: { name: 'Заказчик' } });
+    await Role.findOrCreate({ where: { name: 'Прораб' } });
+    const adminRole = (await Role.findOrCreate({ where: { name: 'Администратор' } }))[0];
 
-    const adminRole = await Role.findOne({ where: { name: 'Администратор' } });
-    const existingAdmin = await User.findOne({ where: { email: 'admin@build.com' } });
+    const adminExists = await User.findOne({ where: { roleId: adminRole.id } });
     
-    if (!existingAdmin && adminRole) {
+    if (!adminExists) {
       const hashPassword = await bcrypt.hash('admin123', 10);
       await User.create({
         email: 'admin@build.com',

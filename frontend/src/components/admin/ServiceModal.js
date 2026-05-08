@@ -28,11 +28,11 @@ const ServiceModal = ({ isOpen, onClose, onSave, serviceData }) => {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Название</label>
-            <input type="text" name="name" value={form.name} onChange={handleChange} required />
+            <input type="text" name="name" value={form.name} onChange={handleChange} required maxLength={100} />
           </div>
           <div className="form-group">
             <label>Описание</label>
-            <textarea name="description" rows="4" value={form.description} onChange={handleChange} required />
+            <textarea name="description" rows="4" value={form.description} onChange={handleChange} required maxLength={500} />
           </div>
           <div className={styles.flexRow} style={{ marginTop: '20px' }}>
             <button type="submit" style={{ flex: 1 }}>Сохранить</button>

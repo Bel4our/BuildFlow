@@ -88,7 +88,7 @@ const AdminDashboard = () => {
       fetchData();
       setServiceModalOpen(false);
       setEditingService(null);
-    } catch (error) {}
+    } catch (error) { alert(error.response?.data?.message || 'Ошибка'); }
   };
   
   const confirmAction = async () => {
@@ -156,6 +156,7 @@ const AdminDashboard = () => {
                     )}
                   </div>
                 </div>
+                <p><strong>ID:</strong> {p.id}</p>
                 <p><strong>Статус:</strong> <span className={`status-badge ${p.status === 'active' ? 'status-active' : 'status-blocked'}`}>{p.status === 'active' ? 'Активен' : 'Завершен'}</span></p>
                 <p><strong>План:</strong> {translatePlanStatus(p.planStatus)}</p>
                 <div className={styles.participants}>
@@ -215,25 +216,28 @@ const AdminDashboard = () => {
       {activeTab === 'services' && (
         <div>
           <button onClick={() => openServiceModal()} className="btn-primary" style={{marginBottom: '15px'}}>+ Добавить услугу</button>
-          <table className="admin-table">
-            <thead>
-              <tr><th>Название</th><th>Описание</th><th>Действия</th></tr>
-            </thead>
-            <tbody>
-              {services.map(s => (
-                <tr key={s.id}>
-                  <td><strong>{s.name}</strong></td>
-                  <td>{s.description}</td>
-                  <td>
-                    <div className={styles.actionButtonsContainer}>
-                      <button onClick={() => openServiceModal(s)} className="btn-info">Изменить</button>
-                      <button onClick={() => setModalState({ isOpen: true, type: 'deleteService', item: s })} className="btn-danger">Удалить</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className={styles.tableResponsive}>
+            <table className="admin-table">
+              <thead>
+                <tr><th>ID</th><th>Название</th><th>Описание</th><th>Действия</th></tr>
+              </thead>
+              <tbody>
+                {services.map(s => (
+                  <tr key={s.id}>
+                    <td>{s.id}</td>
+                    <td><strong>{s.name}</strong></td>
+                    <td>{s.description}</td>
+                    <td>
+                      <div className={styles.actionButtonsContainer}>
+                        <button onClick={() => openServiceModal(s)} className="btn-info">Изменить</button>
+                        <button onClick={() => setModalState({ isOpen: true, type: 'deleteService', item: s })} className="btn-danger">Удалить</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

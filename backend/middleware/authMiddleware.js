@@ -10,7 +10,7 @@ export const verifyToken = (req, res, next) => {
 
     try {
       const user = await User.findByPk(decoded.id, { include: Role });
-      if (!user || user.status === 'blocked' || user.Role.name !== decoded.role) {
+      if (!user || user.status === 'blocked' || user.status === 'deleted' || user.Role.name !== decoded.role) {
         return res.status(401).json({ message: 'Требуется авторизация' });
       }
       req.user = decoded; 

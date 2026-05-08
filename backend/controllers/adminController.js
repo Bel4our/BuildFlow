@@ -1,4 +1,4 @@
-import { User, Role, Project } from '../models/index.js';
+import { User, Role, Task } from '../models/index.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Op } from 'sequelize';
@@ -7,7 +7,11 @@ const passRegex = /^(?=.*[a-zA-Zа-яА-Я])(?=.*\d)(?=.*[^a-zA-Zа-яА-Я0-9])
 
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.findAll({ include: Role, attributes: { exclude: ['passwordHash'] } });
+    const users = await User.findAll({ 
+      where: { status: { [Op.ne]: 'deleted' } },
+      include: Role, 
+      attributes: { exclude: ['passwordHash'] } 
+    });
     res.json(users);
   } catch (error) { res.status(500).json({ message: 'Ошибка получения пользователей' }); }
 };
@@ -27,10 +31,34 @@ export const toggleUserStatus = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    if (req.user.id === parseInt(id)) return res.status(403).json({ message: 'Нельзя удалить самого себя' });
-    await User.destroy({ where: { id } });
-    res.json({ message: 'Пользователь удален' });
-  } catch (error) { res.status(500).json({ message: 'Ошибка' }); }
+    if (req.user.id === parseInt(id)) {
+      return res.status(403).json({ message: 'Нельзя удалить самого себя' });
+    }
+    
+    const user = await User.findByPk(id, { include: Role });
+    if (!user) {
+      return res.status(404).json({ message: 'Пользователь не найден' });
+    }
+
+    if (user.Role.name === 'Прораб') {
+      const uncompletedTasksCount = await Task.count({
+        where: { assignedUserId: id, status: { [Op.ne]: 'выполнена' } }
+      });
+      if (uncompletedTasksCount > 0) {
+        return res.status(400).json({ message: `Нельзя удалить прораба. Сначала переназначьте его незавершенные задачи (${uncompletedTasksCount} шт.) другому исполнителю.` });
+      }
+    }
+    
+    user.status = 'deleted';
+    user.email = `deleted_${Date.now()}_${user.email}`;
+    await user.save();
+    
+    await user.setProjects([]);
+    
+    res.json({ message: 'Пользователь успешно удален' });
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка при удалении пользователя' });
+  }
 };
 
 export const updateUserInfo = async (req, res) => {

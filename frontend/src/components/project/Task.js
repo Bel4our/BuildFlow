@@ -13,6 +13,7 @@ const Task = ({ task, taskIndex, stage, project, user, fetchProject, setModalSta
   const [taskReport, setTaskReport] = useState('');
   const [transferId, setTransferId] = useState('');
 
+  const projectBuilders = project.Users?.filter(u => u.Role.name === 'Прораб') || [];
   const canEdit = user.role === 'Прораб' && task.assignedUserId === user.id && task.status !== 'выполнена' && stage.status !== 'утверждено';
 
   const saveEditedTask = async () => {
@@ -48,6 +49,14 @@ const Task = ({ task, taskIndex, stage, project, user, fetchProject, setModalSta
       fetchProject();
     } catch (err) { alert("Ошибка при сохранении задачи."); }
   };
+  
+  const adminReassign = async (newUserId) => {
+    if (!newUserId) return;
+    try {
+      await api.put(`/tasks/${task.id}/reassign`, { newUserId });
+      fetchProject();
+    } catch(err) { alert(err.response?.data?.message || 'Ошибка'); }
+  };
 
   return (
     <div id={`task-${task.id}`} className={styles.taskItem} style={{ borderLeftColor: task.status === 'выполнена' ? '#28a745' : 'var(--primary-color)' }}>
@@ -69,14 +78,14 @@ const Task = ({ task, taskIndex, stage, project, user, fetchProject, setModalSta
         {editTaskId !== task.id && (
           <div className={styles.taskStatusControls}>
             <span style={{ color: task.status === 'выполнена' ? 'green' : 'orange' }}>{translateTaskStatus(task.status)}</span>
-            {canEdit && (
+            {(canEdit || user.role === 'Администратор') && task.status !== 'выполнена' && (
               <div className={styles.orderButtons}>
                 <button onClick={() => moveTask(stage.id, taskIndex, 'up')} disabled={isFirstTask}>↑</button>
                 <button onClick={() => moveTask(stage.id, taskIndex, 'down')} disabled={isLastTask}>↓</button>
               </div>
             )}
             {canEdit && <button onClick={() => { setEditTaskId(task.id); setEditTaskDesc(task.description); }} className="btn-sm btn-info">✏️</button>}
-            {canEdit && <button onClick={() => setModalState({isOpen: true, type: 'deleteTask', item: task})} className="btn-sm btn-danger">✕</button>}
+            {(canEdit || user.role === 'Администратор') && task.status !== 'выполнена' && <button onClick={() => setModalState({isOpen: true, type: 'deleteTask', item: task})} className="btn-sm btn-danger">✕</button>}
             
             {task.status === 'выполнена' && (user.role === 'Заказчик' || (user.role === 'Прораб' && task.assignedUserId === user.id)) && project.status !== 'completed' && stage.status !== 'утверждено' && (
               <button onClick={() => setModalState({isOpen: true, type: 'rejectTask', item: task})} className="btn-sm btn-warning" style={{marginLeft: '10px'}}>Вернуть в работу</button>
@@ -90,20 +99,33 @@ const Task = ({ task, taskIndex, stage, project, user, fetchProject, setModalSta
         {canEdit && task.status === 'в работе' && <button onClick={() => api.put(`/tasks/${task.id}`, {status: 'новая'}).then(fetchProject)} className="btn-sm btn-secondary">Вернуть в "Новые"</button>}
       </div>
 
-      {task.status === 'новая' && canEdit && !task.transferToUserId && (
+      {task.status !== 'выполнена' && project.status !== 'completed' && stage.status !== 'утверждено' && (
         <div className={styles.transferControlsContainer}>
-          <select value={transferId} onChange={e => setTransferId(e.target.value)} style={{padding:'5px', borderRadius:'4px', border:'1px solid #ccc'}}>
-            <option value="">Передать прорабу...</option>
-            {project.Users.filter(u=>u.Role.name==='Прораб' && u.id !== user.id).map(u=><option key={u.id} value={u.id}>{u.fullName}</option>)}
-          </select>
-          <button onClick={() => api.put(`/tasks/${task.id}/transfer`, {targetUserId: transferId}).then(fetchProject)} className="btn-sm btn-primary" style={{marginLeft:'10px'}}>Отправить запрос</button>
-        </div>
-      )}
+          {user.role === 'Прораб' && task.assignedUserId === user.id && task.status === 'новая' && !task.transferToUserId && (
+              <div style={{display:'flex', gap:'10px', alignItems: 'center'}}>
+                <select value={transferId} onChange={e => setTransferId(e.target.value)} style={{padding:'5px', borderRadius:'4px', border:'1px solid #ccc'}}>
+                  <option value="">Передать прорабу...</option>
+                  {projectBuilders.filter(u => u.id !== user.id).map(u => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+                </select>
+                <button onClick={() => api.put(`/tasks/${task.id}/transfer`, {targetUserId: transferId}).then(fetchProject)} className="btn-sm btn-primary">Отправить</button>
+              </div>
+          )}
 
-      {task.transferToUserId && task.assignedUserId === user.id && (
-        <div className={styles.transferWaiting}>
-          <small>Ждем ответа от {task.pendingTransferUser?.fullName}</small>
-          <button onClick={() => api.put(`/tasks/${task.id}/transfer/cancel`).then(fetchProject)} className="btn-sm btn-danger" style={{marginLeft:'10px'}}>Отменить запрос</button>
+          {task.transferToUserId && task.assignedUserId === user.id && (
+            <div className={styles.transferWaiting}>
+              <small>Ждем ответа от {task.pendingTransferUser?.fullName}</small>
+              <button onClick={() => api.put(`/tasks/${task.id}/transfer/cancel`).then(fetchProject)} className="btn-sm btn-danger" style={{marginLeft:'10px'}}>Отменить запрос</button>
+            </div>
+          )}
+
+          {user.role === 'Администратор' && (
+            <div style={{display:'flex', gap:'10px', alignItems: 'center'}}>
+              <select onChange={e => adminReassign(e.target.value)} value={task.assignedUserId || ""} style={{padding:'5px', borderRadius:'4px', border:'1px solid #ccc'}}>
+                <option value="" disabled>Назначить прораба...</option>
+                {projectBuilders.map(b => <option key={b.id} value={b.id}>{b.fullName}</option>)}
+              </select>
+            </div>
+          )}
         </div>
       )}
 

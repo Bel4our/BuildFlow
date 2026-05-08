@@ -36,7 +36,7 @@ if (token && token !== 'secret') {
     const userId = match[1]; 
     try {
       const user = await User.findByPk(userId, { include: [Role] });
-       if (user) {
+       if (user && user.status !== 'deleted') {
         await User.update({ telegramId: null }, { where: { telegramId: chatId.toString() } });
         user.telegramId = chatId.toString();
         await user.save();
@@ -60,7 +60,7 @@ if (token && token !== 'secret') {
     const chatId = msg.chat.id;
     const searchQuery = match[1];
     try {
-      const user = await User.findOne({ where: { telegramId: chatId.toString() }, include: [Role] });
+      const user = await User.findOne({ where: { telegramId: chatId.toString(), status: { [Op.ne]: 'deleted' } }, include: [Role] });
       if (!user || user.Role.name !== 'Администратор') return bot.sendMessage(chatId, '❌ Эта команда доступна только администраторам.');
       
       let whereClause = {};
@@ -83,12 +83,13 @@ if (token && token !== 'secret') {
     const chatId = msg.chat.id;
     const searchQuery = match[1];
     try {
-      const user = await User.findOne({ where: { telegramId: chatId.toString() }, include: [Role] });
+      const user = await User.findOne({ where: { telegramId: chatId.toString(), status: { [Op.ne]: 'deleted' } }, include: [Role] });
       if (!user || user.Role.name !== 'Администратор') return bot.sendMessage(chatId, '❌ Эта команда доступна только администраторам.');
       
-      let whereClause = {};
+      let whereClause = { status: { [Op.ne]: 'deleted' } };
       if (searchQuery) {
         whereClause = {
+          ...whereClause,
           [Op.or]: [
             { fullName: { [Op.like]: `%${searchQuery}%` } },
             { email: { [Op.like]: `%${searchQuery}%` } }
@@ -110,7 +111,7 @@ if (token && token !== 'secret') {
   bot.onText(/\/status/, async (msg) => {
     const chatId = msg.chat.id;
     try {
-      const user = await User.findOne({ where: { telegramId: chatId.toString() }, include: [{ model: Project, as: 'Projects', include: [{ model: ProjectStage, include: [{ model: Task }] }] }] });
+      const user = await User.findOne({ where: { telegramId: chatId.toString(), status: { [Op.ne]: 'deleted' } }, include: [{ model: Project, as: 'Projects', include: [{ model: ProjectStage, include: [{ model: Task }] }] }] });
       if (!user) return;
       if (!user.Projects || user.Projects.length === 0) return bot.sendMessage(chatId, 'Нет активных проектов.');
 
@@ -128,7 +129,7 @@ if (token && token !== 'secret') {
   bot.onText(/\/settings/, async (msg) => {
     const chatId = msg.chat.id;
     try {
-      const user = await User.findOne({ where: { telegramId: chatId.toString() }, include: [{ model: Project, as: 'Projects' }] });
+      const user = await User.findOne({ where: { telegramId: chatId.toString(), status: { [Op.ne]: 'deleted' } }, include: [{ model: Project, as: 'Projects' }] });
       if (!user) return;
       
       let settings = { global: true, mutedProjects: [] };
@@ -153,7 +154,7 @@ if (token && token !== 'secret') {
 
     try {
       if (data.startsWith('toggle_')) {
-        const user = await User.findOne({ where: { telegramId: chatId.toString() }, include: [{ model: Project, as: 'Projects' }] });
+        const user = await User.findOne({ where: { telegramId: chatId.toString(), status: { [Op.ne]: 'deleted' } }, include: [{ model: Project, as: 'Projects' }] });
         if (!user) return;
         
         let settings = { global: true, mutedProjects: [] };
