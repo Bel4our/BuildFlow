@@ -1,182 +1,135 @@
 import { Project, ProjectStage, User, Task, Attachment, Role, Message } from '../models/index.js';
 import { Op } from 'sequelize';
 import { broadcastToProject } from '../services/telegramBot.js';
+import { ROLES, PLAN_STATUSES } from '../utils/constants.js';
 
 export const getProjects = async (req, res) => {
   try {
     const { role, id } = req.user;
-    let projects;
-    if (role === 'Администратор') {
-      projects = await Project.findAll({
-        include: [
-          { model: ProjectStage, include: [{ model: Task, include: [{ model: Attachment }, { model: User, as: 'pendingTransferUser', attributes: ['id','fullName'] }, { model: User, as: 'worker', attributes: ['id','fullName'] }] }] },
-          { model: User, as: 'Users', attributes: ['id', 'fullName', 'email'], include: [{ model: Role }] }
-        ]
-      });
-    } else {
-      const user = await User.findByPk(id, {
-        include: [{
-          model: Project, as: 'Projects', 
-          include: [
-            { model: ProjectStage, include: [{ model: Task, include: [{ model: Attachment }, { model: User, as: 'pendingTransferUser', attributes: ['id','fullName'] }, { model: User, as: 'worker', attributes: ['id','fullName'] }] }] },
-            { model: User, as: 'Users', attributes: ['id', 'fullName', 'email'], include: [{ model: Role }] }
-          ]
-        }]
-      });
-      projects = user.Projects;
-    }
+    let projects = role === ROLES.ADMIN ? 
+      await Project.findAll({ include: [{ model: ProjectStage, include: [{ model: Task, include: [Attachment, { model: User, as: 'worker' }, { model: User, as: 'pendingTransferUser' }] }] }, { model: User, as: 'Users', include: [Role] }] }) :
+      (await User.findByPk(id, { include: [{ model: Project, as: 'Projects', include: [{ model: ProjectStage, include: [{ model: Task, include: [Attachment, { model: User, as: 'worker' }, { model: User, as: 'pendingTransferUser' }] }] }, { model: User, as: 'Users', include: [Role] }] }] })).Projects;
     res.json(projects);
-  } catch (error) { res.status(500).json({ message: 'Ошибка получения проектов' }); }
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
 
 export const createProject = async (req, res) => {
   try {
     const { name, description, startDate, plannedEndDate, userIds } = req.body;
-    if (name.length > 150) return res.status(400).json({ message: 'Слишком длинное название проекта' });
-    if (new Date(plannedEndDate) < new Date(startDate)) return res.status(400).json({ message: 'Конец проекта не может быть раньше начала' });
-    
-    if (!userIds || userIds.length === 0) return res.status(400).json({ message: 'В проекте должен быть минимум 1 заказчик и 1 прораб' });
-
+    if (new Date(plannedEndDate) < new Date(startDate)) return res.status(400).json({ message: 'Dates error' });
     const users = await User.findAll({ where: { id: userIds }, include: [Role] });
-    const hasClient = users.some(u => u.Role.name === 'Заказчик');
-    const hasBuilder = users.some(u => u.Role.name === 'Прораб');
-
-    if (!hasClient || !hasBuilder) return res.status(400).json({ message: 'В проекте должен быть минимум 1 заказчик и 1 прораб' });
-
+    const clients = users.filter(u => u.Role.name === ROLES.CLIENT);
+    const builders = users.filter(u => u.Role.name === ROLES.BUILDER);
+    if (!clients.length || !builders.length || clients.length > 10 || builders.length > 10) return res.status(400).json({ message: 'Limits error (1-10)' });
     const project = await Project.create({ name, description, startDate, plannedEndDate });
     await project.setUsers(userIds);
-    
-    broadcastToProject(project.id, ['Заказчик', 'Прораб'], `🏗 Вы назначены на новый проект: "${project.name}"`);
-    
-    res.status(201).json({ message: 'Проект создан', project });
-  } catch (error) { res.status(500).json({ message: 'Ошибка при создании проекта' }); }
+    broadcastToProject(project.id, [ROLES.CLIENT, ROLES.BUILDER], `Вы назначены на новый проект: "${project.name}"`);
+    res.status(201).json(project);
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
 
 export const updatePlanStatus = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { planStatus } = req.body; 
-    const project = await Project.findByPk(id, { include: [{ model: User, as: 'Users', include: [Role] }] });
-    if (!project) return res.status(404).json({ message: 'Проект не найден' });
+    const projectId = req.params.id;
+    const { planStatus } = req.body;
 
+    if (planStatus === PLAN_STATUSES.PENDING) {
+      const projectWithStages = await Project.findByPk(projectId, {
+        include: [{ model: ProjectStage, include: [Task] }]
+      });
+
+      for (const stage of projectWithStages.ProjectStages) {
+        if (stage.Tasks.length === 0) {
+          return res.status(400).json({ message: `Этап "${stage.name}" не может быть пустым. Добавьте в него хотя бы одну задачу.` });
+        }
+        if (stage.Tasks.length > 50) {
+          return res.status(400).json({ message: `В этапе "${stage.name}" слишком много задач (максимум 50).` });
+        }
+      }
+    }
+    
+    const project = await Project.findByPk(projectId);
     await project.update({ planStatus });
 
-    if (planStatus === 'pending_approval') {
-      broadcastToProject(project.id, ['Заказчик'], `📄 Прораб отправил план проекта "${project.name}" на утверждение.`);
-    } else if (planStatus === 'approved') {
-      broadcastToProject(project.id, ['Прораб'], `✅ Заказчик утвердил план проекта "${project.name}".`);
-    } else if (planStatus === 'rejected') {
-      broadcastToProject(project.id, ['Прораб'], `❌ Заказчик отклонил план проекта "${project.name}".`);
-    }
-    res.json({ message: `Статус плана изменен`, project });
-  } catch (error) { res.status(500).json({ message: 'Ошибка' }); }
-};
-
-export const getProjectMessages = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const messages = await Message.findAll({ where: { projectId: id }, include: [{ model: User, as: 'sender', attributes: ['id', 'fullName', 'roleId'] }], order: [['createdAt', 'ASC']] });
-    res.json(messages);
-  } catch (error) { res.status(500).json({ message: 'Ошибка' }); }
-};
-
-export const markMessagesRead = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const [updatedCount] = await Message.update({ isRead: true }, { where: { projectId: id, senderId: { [Op.ne]: req.user.id }, isRead: false } });
-    if (updatedCount > 0) req.io.to(id).emit('messages_read', { readerId: req.user.id });
-    res.json({ success: true });
-  } catch (error) { res.status(500).json({ message: 'Ошибка' }); }
+    if (planStatus === PLAN_STATUSES.PENDING) broadcastToProject(projectId, [ROLES.CLIENT], `📄 План проекта "${project.name}" находится на проверке.`);
+    else if (planStatus === PLAN_STATUSES.APPROVED) broadcastToProject(projectId, [ROLES.BUILDER], `✅ План проекта "${project.name}" утвержден.`);
+    else if (planStatus === PLAN_STATUSES.REJECTED) broadcastToProject(projectId, [ROLES.BUILDER], `❌ План проекта "${project.name}" отклонен.`);
+    
+    res.json(project);
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
 
 export const updateProject = async (req, res) => {
   try {
-    const { id } = req.params;
     const { name, description, startDate, plannedEndDate, status, userIds } = req.body;
+    const project = await Project.findByPk(req.params.id, { include: [{ model: User, as: 'Users', include: [Role] }] });
     
-    const project = await Project.findByPk(id);
-    if (!project) return res.status(404).json({ message: 'Проект не найден' });
+    if (project.planStatus === PLAN_STATUSES.APPROVED && (new Date(startDate).getTime() !== new Date(project.startDate).getTime() || new Date(plannedEndDate).getTime() !== new Date(project.plannedEndDate).getTime())) {
+      return res.status(400).json({ message: 'Нельзя изменять даты проекта с утвержденным планом.' });
+    }
+
+    if (status === 'cancelled' && project.status !== 'cancelled') {
+      const stages = await ProjectStage.findAll({ where: { projectId: project.id } });
+      const stageIds = stages.map(s => s.id);
+      if (stageIds.length > 0) {
+        await Task.update(
+          { status: 'отменена', transferToUserId: null },
+          { where: { stageId: { [Op.in]: stageIds }, status: { [Op.ne]: 'выполнена' } } }
+        );
+      }
+    }
 
     if (userIds) {
-      if (userIds.length === 0) return res.status(400).json({ message: 'В проекте должен быть минимум 1 заказчик и 1 прораб' });
-      
-      const newUsers = await User.findAll({ where: { id: userIds }, include: [Role] });
-      const newBuilders = newUsers.filter(u => u.Role.name === 'Прораб');
-      const hasClient = newUsers.some(u => u.Role.name === 'Заказчик');
-
-      if (!hasClient || newBuilders.length === 0) return res.status(400).json({ message: 'В проекте должен быть минимум 1 заказчик и 1 прораб' });
-
-      const oldUsers = await project.getUsers({ include: [Role] });
-      const oldBuilders = oldUsers.filter(u => u.Role.name === 'Прораб');
-      const removedBuilders = oldBuilders.filter(ob => !userIds.includes(ob.id));
-
-      const addedBuilders = newBuilders.filter(nb => !oldBuilders.some(ob => ob.id === nb.id));
-      if (addedBuilders.length > 0) {
-        const names = addedBuilders.map(b => b.fullName).join(', ');
-        broadcastToProject(project.id, ['Заказчик', 'Прораб'], `👷‍♂️ На проект "${project.name}" назначен новый прораб: ${names}.`);
-      }
-
-      if (removedBuilders.length > 0) {
+      const users = await User.findAll({ where: { id: userIds }, include: [Role] });
+      const clients = users.filter(u => u.Role.name === ROLES.CLIENT);
+      const builders = users.filter(u => u.Role.name === ROLES.BUILDER);
+      if (!clients.length || !builders.length || clients.length > 10 || builders.length > 10) return res.status(400).json({ message: 'Limits error' });
+      const oldBuilders = project.Users.filter(u => u.Role.name === ROLES.BUILDER);
+      const removed = oldBuilders.filter(ob => !userIds.includes(ob.id));
+      if (removed.length > 0) {
         const stages = await ProjectStage.findAll({ where: { projectId: project.id } });
-        const stageIds = stages.map(s => s.id);
-
-        for (const rb of removedBuilders) {
-          const uncompletedTasksCount = await Task.count({
-            where: { assignedUserId: rb.id, stageId: { [Op.in]: stageIds }, status: { [Op.ne]: 'выполнена' } }
-          });
-          if (uncompletedTasksCount > 0) {
-            return res.status(400).json({ message: `Нельзя снять прораба ${rb.fullName}, у него есть невыполненные задачи в этом проекте.` });
-          }
+        const sIds = stages.map(s => s.id);
+        for (const rb of removed) {
+          const count = await Task.count({ where: { assignedUserId: rb.id, stageId: { [Op.in]: sIds }, status: { [Op.ne]: 'выполнена' } } });
+          if (count > 0) return res.status(400).json({ message: `У ${rb.fullName} есть активные задачи` });
         }
-
-        const namesRemoved = removedBuilders.map(b => b.fullName).join(', ');
-        broadcastToProject(project.id, ['Заказчик', 'Прораб'], `👋 Прораб отстранен от проекта "${project.name}": ${namesRemoved}.`);
-
-        const targetBuilderId = newBuilders[0].id;
-        if (stageIds.length > 0) {
-          for (const rb of removedBuilders) {
-            await Task.update(
-              { assignedUserId: targetBuilderId, transferToUserId: null },
-              { where: { assignedUserId: rb.id, stageId: { [Op.in]: stageIds } } }
-            );
-          }
-        }
+        await Task.update({ assignedUserId: builders[0].id, transferToUserId: null }, { where: { assignedUserId: { [Op.in]: removed.map(r=>r.id) }, stageId: { [Op.in]: sIds } } });
       }
       await project.setUsers(userIds);
     }
-
     await project.update({ name, description, startDate, plannedEndDate, status });
-    res.json({ message: 'Проект обновлен', project });
-  } catch (error) { res.status(500).json({ message: 'Ошибка обновления' }); }
-};
-
-export const sendProjectMessage = async (req, res) => {
-  try {
-    const message = await Message.create({ text: req.body.text, projectId: req.params.id, senderId: req.user.id });
-    const fullMessage = await Message.findByPk(message.id, { include: [{ model: User, as: 'sender', attributes: ['id', 'fullName', 'roleId'] }] });
-    req.io.to(req.params.id).emit('message_broadcast', fullMessage);
-    res.status(201).json(fullMessage);
-  } catch (error) { res.status(500).json({ message: 'Ошибка' }); }
-};
-
-export const completeProject = async (req, res) => {
-  try {
-    const project = await Project.findByPk(req.params.id);
-    project.status = 'completed';
-    project.actualEndDate = new Date();
-    await project.save();
-    broadcastToProject(project.id, ['Заказчик', 'Прораб'], `🎉 Проект "${project.name}" успешно завершен!`);
-    res.json({ message: 'Проект завершен' });
-  } catch (error) { res.status(500).json({ message: 'Ошибка' }); }
+    res.json(project);
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
 
 export const deleteProject = async (req, res) => {
   try {
-    const { id } = req.params;
-    const project = await Project.findByPk(id);
-    if (!project) return res.status(404).json({ message: 'Проект не найден' });
-    if (project.planStatus !== 'draft') return res.status(403).json({ message: 'Можно удалить только черновик' });
+    const project = await Project.findByPk(req.params.id);
+    if (project.planStatus !== PLAN_STATUSES.DRAFT) return res.status(403).json({ message: 'Only draft' });
     await project.destroy();
-    res.json({ message: 'Проект удален' });
-  } catch (error) { res.status(500).json({ message: 'Ошибка удаления' }); }
+    res.json({ message: 'Deleted' });
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
+};
+export const getProjectMessages = async (req, res) => {
+  try { res.json(await Message.findAll({ where: { projectId: req.params.id }, include: [{ model: User, as: 'sender', attributes: ['id', 'fullName', 'roleId'] }], order: [['createdAt', 'ASC']] })); } catch (error) { res.status(500).json({ message: 'Error' }); }
+};
+export const markMessagesRead = async (req, res) => {
+  try { 
+    await Message.update({ isRead: true }, { where: { projectId: req.params.id, senderId: { [Op.ne]: req.user.id }, isRead: false } }); 
+    req.io.to(req.params.id).emit('messages_read', { readerId: req.user.id });
+    res.json({ success: true }); 
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
+};
+export const sendProjectMessage = async (req, res) => {
+  try {
+    const message = await Message.create({ text: req.body.text, projectId: req.params.id, senderId: req.user.id });
+    const f = await Message.findByPk(message.id, { include: [{ model: User, as: 'sender', attributes: ['id', 'fullName', 'roleId'] }] });
+    req.io.to(req.params.id).emit('message_broadcast', f); res.status(201).json(f);
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
+};
+export const completeProject = async (req, res) => {
+  try {
+    const project = await Project.findByPk(req.params.id); project.status = 'completed'; project.actualEndDate = new Date(); await project.save();
+    broadcastToProject(project.id, [ROLES.CLIENT, ROLES.BUILDER], `🎉 Проект "${project.name}" завершен!`); res.json({ message: 'Success' });
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
 };

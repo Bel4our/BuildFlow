@@ -2,8 +2,6 @@ import TelegramBot from 'node-telegram-bot-api';
 import { User, Project, ProjectStage, Task, Attachment, Role } from '../models/index.js';
 import { Op } from 'sequelize';
 import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
 
 dotenv.config();
 
@@ -15,20 +13,18 @@ const planTranslations = { draft: 'Черновик', pending_approval: 'Ожи�
 if (token && token !== 'secret') {
   bot = new TelegramBot(token, { polling: true });
 
-  const setRegularUserCommands = () => {
-    bot.setMyCommands([
-      { command: '/status', description: '📊 Узнать прогресс' },
-      { command: '/settings', description: '⚙️ Настройки уведомлений' },
-      { command: '/start', description: '🔗 Привязать/Сменить аккаунт' }
-    ]);
+  const setRegularUserCommands = async (chatId) => {
+    await bot.setMyCommands([
+      { command: '/status', description: '📊 Прогресс (можно указать имя проекта)' },
+      { command: '/settings', description: '⚙️ Настройки уведомлений' }
+    ], { scope: { type: 'chat', chat_id: chatId } });
   };
 
-  const setAdminCommands = () => {
-    bot.setMyCommands([
+  const setAdminCommands = async (chatId) => {
+    await bot.setMyCommands([
       { command: '/projects', description: '📁 Список/поиск проектов' },
-      { command: '/users', description: '👥 Список/поиск пользователей' },
-      { command: '/start', description: '🔗 Привязать/Сменить аккаунт' }
-    ]);
+      { command: '/users', description: '👥 Список/поиск пользователей' }
+    ], { scope: { type: 'chat', chat_id: chatId } });
   };
 
   bot.onText(/\/start (.+)/, async (msg, match) => {
@@ -43,10 +39,10 @@ if (token && token !== 'secret') {
         
         let text = `Отлично, ${user.fullName}! Ваш аккаунт успешно привязан.\nВаша роль: *${user.Role.name}*.\n\n`;
         if (user.Role.name === 'Администратор') {
-          setAdminCommands();
+          await setAdminCommands(chatId);
           text += `Вам доступны команды для поиска:\n/projects [название]\n/users [имя/email]`;
         } else {
-          setRegularUserCommands();
+          await setRegularUserCommands(chatId);
           text += `Используйте меню команд для навигации.`;
         }
         bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
@@ -54,7 +50,17 @@ if (token && token !== 'secret') {
     } catch (error) {}
   });
 
-  bot.onText(/\/start$/, (msg) => { bot.sendMessage(msg.chat.id, 'Привяжите аккаунт через сайт BuildFlow.'); });
+  bot.onText(/\/start$/, async (msg) => { 
+    const chatId = msg.chat.id;
+    try {
+      const user = await User.findOne({ where: { telegramId: chatId.toString(), status: { [Op.ne]: 'deleted' } } });
+      if (user) {
+        bot.sendMessage(chatId, '✅ Ваш аккаунт уже привязан к боту. Используйте меню команд для работы.');
+      } else {
+        bot.sendMessage(chatId, '🔗 Вы не авторизованы. Пожалуйста, привяжите аккаунт через раздел "Личный кабинет" на сайте BuildFlow.');
+      }
+    } catch (e) {}
+  });
 
   bot.onText(/\/projects(?:\s+(.+))?/, async (msg, match) => {
     const chatId = msg.chat.id;
@@ -73,7 +79,7 @@ if (token && token !== 'secret') {
       
       let text = searchQuery ? `*Результаты поиска по "${searchQuery}" (${projects.length}):*\n\n` : '*Последние 10 проектов в системе:*\n\n';
       projects.forEach(p => {
-        text += `🔹 *${p.name}*\nСтатус: ${p.status === 'active' ? 'В работе' : 'Завершен'}\n\n`;
+        text += `🔹 *${p.name}*\nСтатус: ${p.status === 'active' ? 'В работе' : p.status === 'completed' ? 'Завершен' : 'Отменен'}\n\n`;
       });
       bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
     } catch (error) {}
@@ -108,15 +114,27 @@ if (token && token !== 'secret') {
     } catch (error) {}
   });
 
-  bot.onText(/\/status/, async (msg) => {
+  bot.onText(/\/status(?:\s+(.+))?/, async (msg, match) => {
     const chatId = msg.chat.id;
+    const searchQuery = match[1]?.trim();
+
     try {
       const user = await User.findOne({ where: { telegramId: chatId.toString(), status: { [Op.ne]: 'deleted' } }, include: [{ model: Project, as: 'Projects', include: [{ model: ProjectStage, include: [{ model: Task }] }] }] });
       if (!user) return;
       if (!user.Projects || user.Projects.length === 0) return bot.sendMessage(chatId, 'Нет активных проектов.');
 
-      let text = `*Сводка по вашим проектам:*\n\n`;
-      user.Projects.forEach(p => {
+      let targetProjects = user.Projects;
+      
+      if (searchQuery) {
+        targetProjects = targetProjects.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        if (targetProjects.length === 0) {
+          return bot.sendMessage(chatId, `❌ Проекты, содержащие в названии "${searchQuery}", не найдены.`);
+        }
+      }
+
+      let text = searchQuery ? `*Результаты поиска по вашим проектам ("${searchQuery}"):*\n\n` : `*Сводка по вашим проектам:*\n\n`;
+      
+      targetProjects.forEach(p => {
         const allTasks = p.ProjectStages.flatMap(s => s.Tasks);
         const completed = allTasks.filter(t => t.status === 'выполнена').length;
         const progress = allTasks.length === 0 ? 0 : Math.round((completed / allTasks.length) * 100);
@@ -185,40 +203,6 @@ if (token && token !== 'secret') {
         bot.editMessageReplyMarkup({ inline_keyboard: keyboard }, { chat_id: chatId, message_id: query.message.message_id });
         return bot.answerCallbackQuery(query.id);
       }
-
-      if (data.startsWith('approve_') || data.startsWith('reject_')) {
-        const stageId = data.split('_')[1];
-        const stage = await ProjectStage.findByPk(stageId, { include: [{ model: Project, include: [{ model: User, as: 'Users', include: [Role] }] }, Task] });
-        
-        if (data.startsWith('approve_')) {
-          if (stage.status === 'утверждено') return bot.answerCallbackQuery(query.id, { text: 'Уже утвержден', show_alert: true });
-          stage.status = 'утверждено';
-          stage.actualEndDate = new Date();
-          await stage.save();
-          bot.editMessageText(query.message.text + '\n\n*ВЫ УТВЕРДИЛИ ЭТОТ ЭТАП*', { chat_id: chatId, message_id: query.message.message_id, parse_mode: 'Markdown' });
-          broadcastToProject(stage.Project.id, ['Прораб'], `✅ Заказчик утвердил этап *"${stage.name}"*!`, { parse_mode: 'Markdown' });
-          bot.answerCallbackQuery(query.id, { text: 'Утвержден!' });
-        } else {
-          stage.status = 'в работе';
-          await stage.save();
-          for (let task of stage.Tasks) { if(task.status==='выполнена') {task.status = 'в работе'; await task.save(); }}
-          bot.editMessageText(query.message.text + '\n\n*ВЫ ОТКЛОНИЛИ ЭТОТ ЭТАП*', { chat_id: chatId, message_id: query.message.message_id, parse_mode: 'Markdown' });
-          broadcastToProject(stage.Project.id, ['Прораб'], `❌ Заказчик *ОТКЛОНИЛ* этап "${stage.name}". Задачи возвращены в работу.`, { parse_mode: 'Markdown' });
-          bot.answerCallbackQuery(query.id, { text: 'Отклонен!' });
-        }
-      }
-
-      if (data.startsWith('files_')) {
-        const stageId = data.split('_')[1];
-        bot.answerCallbackQuery(query.id, { text: 'Собираю файлы...' });
-        const stage = await ProjectStage.findByPk(stageId, { include: [{ model: Task, include: [Attachment] }] });
-        const allAttachments = stage.Tasks.flatMap(t => t.Attachments);
-        if (allAttachments.length === 0) return bot.sendMessage(chatId, 'Файлов нет.');
-        for (const att of allAttachments) {
-          const filePath = path.join(process.cwd(), att.filePath);
-          if (fs.existsSync(filePath)) await bot.sendDocument(chatId, fs.createReadStream(filePath));
-        }
-      }
     } catch (error) {
       bot.answerCallbackQuery(query.id);
     }
@@ -247,7 +231,7 @@ export const broadcastToProject = async (projectId, rolesToNotify, text, options
       if (rolesToNotify.includes(u.Role.name)) recipients.set(u.id, u);
     });
     recipients.forEach(userObj => sendNotification(userObj, text, projectId, options));
-  } catch (error) { console.error(error); }
+  } catch (error) {}
 };
 
 export default bot;

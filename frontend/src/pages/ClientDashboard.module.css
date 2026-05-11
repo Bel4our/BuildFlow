@@ -5,3 +5,5 @@
 .projectCard p { color: #666; margin-bottom: 5px; }
 .attentionText { color: #ffc107; font-weight: bold; font-size: 0.9em; margin-top: 10px; }
 .projectCard button { width: 100%; margin-top: auto; padding-top: 10px; }
+.completedProject { opacity: 0.7; border-left-color: #28a745 !important; }
+.completedBadge { font-size: 0.7em; color: white; background-color: #28a745; padding: 3px 8px; border-radius: 10px; vertical-align: middle; margin-left: 10px; }

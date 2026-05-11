@@ -121,6 +121,13 @@ const AdminDashboard = () => {
   const filteredProjects = projects.filter(p => p.name.toLowerCase().includes(searchProject.toLowerCase()));
   const filteredUsers = users.filter(u => u.fullName.toLowerCase().includes(searchUser.toLowerCase()) || u.email.toLowerCase().includes(searchUser.toLowerCase()));
 
+  const getStatusText = (status) => {
+    if (status === 'active') return 'Активен';
+    if (status === 'completed') return 'Завершен';
+    if (status === 'cancelled') return 'Отменен';
+    return status;
+  };
+
   return (
     <div className={styles.container}>
       <ConfirmModal 
@@ -157,7 +164,7 @@ const AdminDashboard = () => {
                   </div>
                 </div>
                 <p><strong>ID:</strong> {p.id}</p>
-                <p><strong>Статус:</strong> <span className={`status-badge ${p.status === 'active' ? 'status-active' : 'status-blocked'}`}>{p.status === 'active' ? 'Активен' : 'Завершен'}</span></p>
+                <p><strong>Статус:</strong> <span className={`status-badge ${p.status === 'active' ? 'status-active' : p.status === 'completed' ? 'status-success' : 'status-blocked'}`}>{getStatusText(p.status)}</span></p>
                 <p><strong>План:</strong> {translatePlanStatus(p.planStatus)}</p>
                 <div className={styles.participants}>
                   <strong>Участники ({p.Users?.length}):</strong>

@@ -33,7 +33,7 @@ const MyTasks = () => {
   }, []);
 
   const handleNavigate = (projectId, taskId) => {
-    navigate(`/project/${projectId}#task-${taskId}`);
+    navigate(`/project/${projectId}`, { state: { scrollToTaskId: taskId } });
   };
 
   if (loading) return <div>Загрузка задач...</div>;
@@ -60,7 +60,7 @@ const MyTasks = () => {
       <div className={styles.filters}>
         <select value={projectFilter} onChange={e => setProjectFilter(e.target.value)} className={styles.filterSelect}>
           <option value="">Все проекты</option>
-          {uniqueProjects.map(p => <option key={p} value={p}>{p}</option>)}
+          {uniqueProjects.map(p => <option key={p} value={p}>{p.length > 50 ? p.substring(0, 50) + '...' : p}</option>)}
         </select>
         
         <input 
@@ -76,6 +76,7 @@ const MyTasks = () => {
           <option value="новая">Новые</option>
           <option value="в работе">В работе</option>
           <option value="выполнена">Выполненные</option>
+          <option value="отменена">Отменена</option>
         </select>
       </div>
 
@@ -93,7 +94,7 @@ const MyTasks = () => {
                     <span className={styles.stageName}>Этап: {task.ProjectStage.name}</span>
                   </div>
                   <div className={styles.taskActions}>
-                    <span className={`${styles.statusBadge} ${styles[task.status]}`}>
+                    <span className={`${styles.statusBadge} ${styles[task.status.replace(' ', '_')]}`}>
                       {translateTaskStatus(task.status)}
                     </span>
                     <button onClick={() => handleNavigate(projectGroup.projectId, task.id)}>

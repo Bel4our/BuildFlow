@@ -9,6 +9,8 @@ import { Server } from 'socket.io';
 import { Sequelize } from 'sequelize';
 import { MulterError } from 'multer';
 
+import { checkOverdueStages } from './services/cronService.js';
+
 import { sequelize, seedDatabase } from './models/index.js';
 import authRoutes from './routes/authRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
@@ -93,4 +95,5 @@ const startServer = async () => {
     }
 };
 
+setInterval(checkOverdueStages, 1000 * 60 * 60 * 24);
 startServer();

@@ -100,5 +100,6 @@
 .teamInfoBox { background: #e9ecef; padding: 15px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px; }
 .teamInfoBox h4 { margin: 0 0 10px 0; }
 .teamInfoBox p { margin: 0 0 5px 0; }
+.teamInfoBox .scrollTeam { list-style: none; padding-left: 0; margin: 0; }
 .warningBanner { background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px; border: 1px solid #ffeeba; font-weight: bold; text-align: center; }
 .taskLowerControls { margin-top: 10px; display: flex; gap: 10px; }

@@ -58,11 +58,13 @@ const ProjectChat = ({ projectId }) => {
     };
   }, [projectId, user.id]);
 
-  const handleChatInteraction = useCallback(() => {
+  const handleChatInteraction = useCallback(async () => {
     if (hasUnread) {
-      api.put(`/projects/${projectId}/messages/read`);
-      setMessages(prev => prev.map(msg => msg.senderId !== user.id ? { ...msg, isRead: true } : msg));
-      setHasUnread(false);
+      try {
+        await api.put(`/projects/${projectId}/messages/read`);
+        setMessages(prev => prev.map(msg => msg.senderId !== user.id ? { ...msg, isRead: true } : msg));
+        setHasUnread(false);
+      } catch (error) {}
     }
   }, [hasUnread, projectId, user.id]);
   

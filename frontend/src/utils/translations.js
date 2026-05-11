@@ -12,7 +12,8 @@ export const translateTaskStatus = (status) => {
   const statuses = {
     'новая': 'Новая',
     'в работе': 'В работе',
-    'выполнена': 'Выполнена'
+    'выполнена': 'Выполнена',
+    'отменена': 'Отменена'
   };
   return statuses[status] || status;
 };

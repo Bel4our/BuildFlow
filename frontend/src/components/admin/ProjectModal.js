@@ -76,6 +76,7 @@ const ProjectModal = ({ isOpen, onClose, onSave, projectData, users }) => {
               <select value={project.status} onChange={e => setProject({ ...project, status: e.target.value })}>
                 <option value="active">Активен (В работе)</option>
                 <option value="completed">Завершен</option>
+                <option value="cancelled">Отменен</option>
               </select>
             </div>
           )}

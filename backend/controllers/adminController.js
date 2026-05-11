@@ -2,111 +2,69 @@ import { User, Role, Task } from '../models/index.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Op } from 'sequelize';
-
-const passRegex = /^(?=.*[a-zA-Zа-яА-Я])(?=.*\d)(?=.*[^a-zA-Zа-яА-Я0-9]).{8,}$/;
+import { ROLES, PASS_REGEX } from '../utils/constants.js';
 
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.findAll({ 
-      where: { status: { [Op.ne]: 'deleted' } },
-      include: Role, 
-      attributes: { exclude: ['passwordHash'] } 
-    });
+    const users = await User.findAll({ where: { status: { [Op.ne]: 'deleted' } }, include: Role, attributes: { exclude: ['passwordHash'] } });
     res.json(users);
-  } catch (error) { res.status(500).json({ message: 'Ошибка получения пользователей' }); }
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
 
 export const toggleUserStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    if (req.user.id === parseInt(id)) return res.status(403).json({ message: 'Нельзя заблокировать самого себя' });
+    if (req.user.id === parseInt(id)) return res.status(403).json({ message: 'Error' });
     const user = await User.findByPk(id);
-    if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
     const newStatus = user.status === 'active' ? 'blocked' : 'active';
     await user.update({ status: newStatus });
-    res.json({ message: `Статус пользователя изменен на ${newStatus}` });
-  } catch (error) { res.status(500).json({ message: 'Ошибка' }); }
+    res.json({ message: `Success` });
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
 
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    if (req.user.id === parseInt(id)) {
-      return res.status(403).json({ message: 'Нельзя удалить самого себя' });
-    }
-    
+    if (req.user.id === parseInt(id)) return res.status(403).json({ message: 'Error' });
     const user = await User.findByPk(id, { include: Role });
-    if (!user) {
-      return res.status(404).json({ message: 'Пользователь не найден' });
+    if (user.Role.name === ROLES.BUILDER) {
+      const count = await Task.count({ where: { assignedUserId: id, status: { [Op.ne]: 'выполнена' } } });
+      if (count > 0) return res.status(400).json({ message: `Сначала переназначьте ${count} задач.` });
     }
-
-    if (user.Role.name === 'Прораб') {
-      const uncompletedTasksCount = await Task.count({
-        where: { assignedUserId: id, status: { [Op.ne]: 'выполнена' } }
-      });
-      if (uncompletedTasksCount > 0) {
-        return res.status(400).json({ message: `Нельзя удалить прораба. Сначала переназначьте его незавершенные задачи (${uncompletedTasksCount} шт.) другому исполнителю.` });
-      }
-    }
-    
     user.status = 'deleted';
     user.email = `deleted_${Date.now()}_${user.email}`;
     await user.save();
-    
     await user.setProjects([]);
-    
-    res.json({ message: 'Пользователь успешно удален' });
-  } catch (error) {
-    res.status(500).json({ message: 'Ошибка при удалении пользователя' });
-  }
+    res.json({ message: 'Success' });
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
 
 export const updateUserInfo = async (req, res) => {
   try {
     const { id } = req.params;
     const { fullName, email, roleId } = req.body;
-    
+    if (email.length > 50) return res.status(400).json({ message: 'Email max 50' });
     const user = await User.findByPk(id, { include: Role });
-    if (!user) return res.status(404).json({ message: 'Не найден' });
-
-    if (user.roleId !== parseInt(roleId) && user.Role.name === 'Прораб') {
+    if (user.roleId !== parseInt(roleId) && (user.Role.name === ROLES.BUILDER || user.Role.name === ROLES.CLIENT)) {
       const activeProjects = await user.getProjects({ where: { status: 'active' } });
-      if (activeProjects.length > 0) {
-        return res.status(403).json({ message: 'Нельзя изменить роль прорабу, пока у него есть незавершенные проекты.' });
-      }
+      if (activeProjects.length > 0) return res.status(403).json({ message: 'Нельзя сменить роль при активных проектах.' });
     }
-    
-    if (req.user.id === parseInt(id) && user.roleId !== parseInt(roleId)) {
-      return res.status(403).json({ message: 'Нельзя изменить собственную роль' });
-    }
-
-    const existingEmail = await User.findOne({ where: { email, id: { [Op.ne]: id } } });
-    if (existingEmail) return res.status(400).json({ message: 'Этот Email уже занят другим пользователем' });
-    
+    const exist = await User.findOne({ where: { email, id: { [Op.ne]: id } } });
+    if (exist) return res.status(400).json({ message: 'Email exist' });
     await User.update({ fullName: fullName.substring(0,100), email, roleId }, { where: { id } });
-
-    let newToken = null;
-    if (req.user.id === parseInt(id)) {
-      const updatedUser = await User.findByPk(id, { include: Role });
-      newToken = jwt.sign(
-        { id: updatedUser.id, email: updatedUser.email, role: updatedUser.Role.name, fullName: updatedUser.fullName, hasTelegram: !!updatedUser.telegramId }, 
-        process.env.JWT_SECRET, 
-        { expiresIn: '24h' }
-      );
-    }
-
-    res.json({ message: 'Данные пользователя обновлены', token: newToken });
-  } catch (error) { res.status(500).json({ message: 'Ошибка обновления' }); }
+    res.json({ message: 'Success' });
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
 
 export const createUser = async (req, res) => {
   try {
     const { fullName, email, password, roleId } = req.body;
-    if (!passRegex.test(password)) return res.status(400).json({ message: 'Пароль: мин. 8 символов, 1 буква, 1 цифра, 1 спецсимвол' });
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) return res.status(400).json({ message: 'Email уже существует' });
-    const hashPassword = await bcrypt.hash(password, 10);
-    const newUser = await User.create({ email, passwordHash: hashPassword, fullName: fullName.substring(0,100), roleId });
-    res.status(201).json({ message: 'Пользователь создан', user: newUser });
-  } catch (error) { res.status(500).json({ message: 'Ошибка' }); }
+    if (email.length > 50) return res.status(400).json({ message: 'Email max 50' });
+    if (!PASS_REGEX.test(password)) return res.status(400).json({ message: 'Invalid password' });
+    const exist = await User.findOne({ where: { email } });
+    if (exist) return res.status(400).json({ message: 'Email exist' });
+    const hash = await bcrypt.hash(password, 10);
+    const u = await User.create({ email, passwordHash: hash, fullName: fullName.substring(0,100), roleId });
+    res.status(201).json({ user: u });
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
