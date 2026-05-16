@@ -158,9 +158,7 @@ const AdminDashboard = () => {
                   <h3 className={`${styles.cardTitle} ${styles.truncateMultiline}`} title={p.name}>{p.name}</h3>
                   <div style={{display:'flex', gap:'5px', flexShrink: 0}}>
                     <button onClick={() => openProjectModal(p)} className="btn-secondary">Изменить</button>
-                    {p.planStatus === 'draft' && (
-                      <button onClick={() => setModalState({ isOpen: true, type: 'deleteProject', item: p })} className="btn-danger">✕</button>
-                    )}
+                    <button onClick={() => setModalState({ isOpen: true, type: 'deleteProject', item: p })} className="btn-danger">✕</button>
                   </div>
                 </div>
                 <p><strong>ID:</strong> {p.id}</p>

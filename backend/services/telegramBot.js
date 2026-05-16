@@ -9,6 +9,7 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 let bot = null;
 
 const planTranslations = { draft: 'Черновик', pending_approval: 'Ожидает утверждения', approved: 'Утвержден', rejected: 'Отклонен' };
+const projectStatusTranslations = { active: 'Активен', completed: 'Завершен', cancelled: 'Отменен' };
 
 if (token && token !== 'secret') {
   bot = new TelegramBot(token, { polling: true });
@@ -79,7 +80,7 @@ if (token && token !== 'secret') {
       
       let text = searchQuery ? `*Результаты поиска по "${searchQuery}" (${projects.length}):*\n\n` : '*Последние 10 проектов в системе:*\n\n';
       projects.forEach(p => {
-        text += `🔹 *${p.name}*\nСтатус: ${p.status === 'active' ? 'В работе' : p.status === 'completed' ? 'Завершен' : 'Отменен'}\n\n`;
+        text += `🔹 *${p.name}*\nСтатус проекта: ${projectStatusTranslations[p.status] || p.status}\n\n`;
       });
       bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
     } catch (error) {}
@@ -138,7 +139,7 @@ if (token && token !== 'secret') {
         const allTasks = p.ProjectStages.flatMap(s => s.Tasks);
         const completed = allTasks.filter(t => t.status === 'выполнена').length;
         const progress = allTasks.length === 0 ? 0 : Math.round((completed / allTasks.length) * 100);
-        text += `*${p.name}*\nСтатус плана: ${planTranslations[p.planStatus] || p.planStatus}\nПрогресс: ${progress}% (${completed}/${allTasks.length})\n\n`;
+        text += `*${p.name}*\nСтатус проекта: ${projectStatusTranslations[p.status] || p.status}\nСтатус плана: ${planTranslations[p.planStatus] || p.planStatus}\nПрогресс: ${progress}% (${completed}/${allTasks.length})\n\n`;
       });
       bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
     } catch (error) {}

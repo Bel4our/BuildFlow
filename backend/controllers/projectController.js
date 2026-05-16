@@ -55,6 +55,7 @@ export const updatePlanStatus = async (req, res) => {
     else if (planStatus === PLAN_STATUSES.APPROVED) broadcastToProject(projectId, [ROLES.BUILDER], `✅ План проекта "${project.name}" утвержден.`);
     else if (planStatus === PLAN_STATUSES.REJECTED) broadcastToProject(projectId, [ROLES.BUILDER], `❌ План проекта "${project.name}" отклонен.`);
     
+    req.io.to(projectId.toString()).emit('stage_status_updated');
     res.json(project);
   } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
@@ -98,6 +99,8 @@ export const updateProject = async (req, res) => {
       await project.setUsers(userIds);
     }
     await project.update({ name, description, startDate, plannedEndDate, status });
+    
+    req.io.to(project.id.toString()).emit('stage_status_updated');
     res.json(project);
   } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
@@ -105,14 +108,16 @@ export const updateProject = async (req, res) => {
 export const deleteProject = async (req, res) => {
   try {
     const project = await Project.findByPk(req.params.id);
-    if (project.planStatus !== PLAN_STATUSES.DRAFT) return res.status(403).json({ message: 'Only draft' });
+    if (!project) return res.status(404).json({ message: 'Проект не найден' });
     await project.destroy();
     res.json({ message: 'Deleted' });
   } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
+
 export const getProjectMessages = async (req, res) => {
   try { res.json(await Message.findAll({ where: { projectId: req.params.id }, include: [{ model: User, as: 'sender', attributes: ['id', 'fullName', 'roleId'] }], order: [['createdAt', 'ASC']] })); } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
+
 export const markMessagesRead = async (req, res) => {
   try { 
     await Message.update({ isRead: true }, { where: { projectId: req.params.id, senderId: { [Op.ne]: req.user.id }, isRead: false } }); 
@@ -120,6 +125,7 @@ export const markMessagesRead = async (req, res) => {
     res.json({ success: true }); 
   } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
+
 export const sendProjectMessage = async (req, res) => {
   try {
     const message = await Message.create({ text: req.body.text, projectId: req.params.id, senderId: req.user.id });
@@ -127,9 +133,16 @@ export const sendProjectMessage = async (req, res) => {
     req.io.to(req.params.id).emit('message_broadcast', f); res.status(201).json(f);
   } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
+
 export const completeProject = async (req, res) => {
   try {
-    const project = await Project.findByPk(req.params.id); project.status = 'completed'; project.actualEndDate = new Date(); await project.save();
-    broadcastToProject(project.id, [ROLES.CLIENT, ROLES.BUILDER], `🎉 Проект "${project.name}" завершен!`); res.json({ message: 'Success' });
+    const project = await Project.findByPk(req.params.id); 
+    project.status = 'completed'; 
+    project.actualEndDate = new Date(); 
+    await project.save();
+    broadcastToProject(project.id, [ROLES.CLIENT, ROLES.BUILDER], `🎉 Проект "${project.name}" завершен!`); 
+    
+    req.io.to(project.id.toString()).emit('stage_status_updated');
+    res.json({ message: 'Success' });
   } catch (error) { res.status(500).json({ message: 'Error' }); }
 };

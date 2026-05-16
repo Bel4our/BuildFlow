@@ -56,7 +56,10 @@ app.use('/api/order', orderRoutes);
 app.use((err, req, res, next) => {
     if (err instanceof MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({ message: 'Файл слишком большой. Максимальный размер - 10 МБ.' });
+            return res.status(400).json({ message: 'Файл слишком большой. Максимальный размер — 10 МБ.' });
+        }
+        if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
+            return res.status(400).json({ message: 'Можно прикрепить не более 10 файлов за одну отправку.' });
         }
     }
     next(err);

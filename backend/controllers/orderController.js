@@ -25,6 +25,8 @@ export const updateStageOrder = async (req, res) => {
     }
     await t.commit();
     await triggerReapproval(projectId, 'изменен порядок этапов');
+    
+    req.io.to(projectId.toString()).emit('stage_status_updated');
     res.json({ message: 'Порядок этапов обновлен' });
   } catch (error) {
     await t.rollback();
@@ -47,7 +49,9 @@ export const updateTaskOrder = async (req, res) => {
     const stage = await ProjectStage.findByPk(stageId);
     if (stage) {
       await triggerReapproval(stage.projectId, 'изменен порядок задач');
+      req.io.to(stage.projectId.toString()).emit('stage_status_updated');
     }
+    
     res.json({ message: 'Порядок задач обновлен' });
   } catch (error) {
     await t.rollback();

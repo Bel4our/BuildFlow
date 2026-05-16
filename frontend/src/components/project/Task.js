@@ -6,6 +6,10 @@ import styles from '../../pages/ProjectDetails.module.css';
 const isImage = (f) => /\.(jpeg|jpg|gif|png)$/i.test(f);
 const backendUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000';
 
+/** Согласовано с backend: taskRoutes multer.array('photos', 10); uploadMiddleware limits.fileSize 10 МБ */
+const MAX_ATTACHMENTS_PER_SUBMIT = 10;
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
 const Task = ({ task, taskIndex, stage, project, user, fetchProject, setModalState, setActivePhoto, isEditingPlan, moveTask, isFirstTask, isLastTask, handleDraftTaskEdit, removeDraftTask }) => {
   const [editTaskDesc, setEditTaskDesc] = useState(task.description);
   const [taskFiles, setTaskFiles] = useState([]);
@@ -26,11 +30,49 @@ const Task = ({ task, taskIndex, stage, project, user, fetchProject, setModalSta
     project.status === 'active';
 
   const handleFileSelection = (e) => {
-    const newFiles = Array.from(e.target.files).map(file => ({
-      file,
-      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
-    }));
-    setTaskFiles(prev => [...prev, ...newFiles]);
+    const picked = Array.from(e.target.files);
+    e.target.value = '';
+
+    const slotsLeft = MAX_ATTACHMENTS_PER_SUBMIT - taskFiles.length;
+    const msgs = [];
+
+    if (slotsLeft <= 0 && picked.length > 0) {
+      alert('За один раз можно прикрепить не более 10 файлов. Удалите лишнее из списка и добавьте снова.');
+      return;
+    }
+
+    const tooLargeNames = [];
+    const next = [...taskFiles];
+
+    for (const file of picked) {
+      if (next.length >= MAX_ATTACHMENTS_PER_SUBMIT) break;
+
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        tooLargeNames.push(file.name);
+        continue;
+      }
+
+      next.push({
+        file,
+        previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+      });
+    }
+
+    if (tooLargeNames.length > 0) {
+      msgs.push(
+        `Размер каждого файла не может превышать 10 МБ. Такие файлы не добавлены: ${tooLargeNames.join(', ')}`
+      );
+    }
+
+    const validInPicker = picked.filter((f) => f.size <= MAX_ATTACHMENT_BYTES).length;
+    if (slotsLeft > 0 && validInPicker > slotsLeft) {
+      msgs.push(
+        `Можно добавить только ${slotsLeft} файл(ов) — суммарно не более ${MAX_ATTACHMENTS_PER_SUBMIT} за одну отправку. Часть выбранных файлов не попала в список.`
+      );
+    }
+
+    if (msgs.length) alert(msgs.join('\n\n'));
+    setTaskFiles(next);
   };
 
   const removeSelectedFile = (indexToRemove) => {
@@ -46,7 +88,10 @@ const Task = ({ task, taskIndex, stage, project, user, fetchProject, setModalSta
       await api.put(`/tasks/${task.id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setTaskFiles([]); setTaskReport('');
       fetchProject();
-    } catch (err) { alert("Ошибка при сохранении задачи."); }
+    } catch (err) {
+      const m = err.response?.data?.message;
+      alert(m || 'Ошибка при сохранении задачи.');
+    }
   };
 
   return (
@@ -119,6 +164,9 @@ const Task = ({ task, taskIndex, stage, project, user, fetchProject, setModalSta
         <div className={styles.completeTaskForm}>
           <textarea placeholder="Напишите отчет о проделанной работе..." defaultValue={task.reportText || ''} onChange={e=>setTaskReport(e.target.value)} className={styles.reportInput}/>
           <div className={styles.fileUploadWrapper}>
+            <small style={{ display: 'block', color: '#555', marginBottom: '6px' }}>
+              Не более 10 файлов, каждый до 10 МБ.
+            </small>
             <label className={styles.fileUploadLabel}>
               + Прикрепить файлы
               <input type="file" multiple onChange={handleFileSelection} style={{ display: 'none' }} />

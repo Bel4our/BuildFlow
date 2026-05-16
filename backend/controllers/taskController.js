@@ -1,6 +1,7 @@
 import { Task, ProjectStage, Attachment, User, Project } from '../models/index.js';
 import { broadcastToProject, sendNotification } from '../services/telegramBot.js';
 import sequelize from '../config/db.js';
+import { ROLES } from '../utils/constants.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -230,7 +231,9 @@ export const rejectTask = async (req, res) => {
         task.status = 'в работе'; 
         await task.save(); 
         req.io.to(task.ProjectStage.projectId.toString()).emit('stage_status_updated');
-        broadcastToProject(task.ProjectStage.Project.id, ['Прораб'], `❌ В проекте "${task.ProjectStage.Project.name}" заказчик вернул задачу:\n"${task.description}"`); 
+        if (req.user.role === ROLES.CLIENT) {
+            broadcastToProject(task.ProjectStage.Project.id, [ROLES.BUILDER], `❌ В проекте "${task.ProjectStage.Project.name}" заказчик вернул задачу:\n"${task.description}"`); 
+        }
         res.json({ message: 'Reject' }); 
     } catch (err) { res.status(500).json({ message: 'Error' }); } 
 };
