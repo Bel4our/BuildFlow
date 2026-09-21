@@ -16,15 +16,15 @@ if (token && token !== 'secret') {
 
   const setRegularUserCommands = async (chatId) => {
     await bot.setMyCommands([
-      { command: '/status', description: '📊 Прогресс (можно указать имя проекта)' },
-      { command: '/settings', description: '⚙️ Настройки уведомлений' }
+      { command: '/status', description: 'Прогресс (можно указать имя проекта)' },
+      { command: '/settings', description: 'Настройки уведомлений' }
     ], { scope: { type: 'chat', chat_id: chatId } });
   };
 
   const setAdminCommands = async (chatId) => {
     await bot.setMyCommands([
-      { command: '/projects', description: '📁 Список/поиск проектов' },
-      { command: '/users', description: '👥 Список/поиск пользователей' }
+      { command: '/projects', description: 'Список и поиск проектов' },
+      { command: '/users', description: 'Список и поиск пользователей' }
     ], { scope: { type: 'chat', chat_id: chatId } });
   };
 
@@ -56,9 +56,9 @@ if (token && token !== 'secret') {
     try {
       const user = await User.findOne({ where: { telegramId: chatId.toString(), status: { [Op.ne]: 'deleted' } } });
       if (user) {
-        bot.sendMessage(chatId, '✅ Ваш аккаунт уже привязан к боту. Используйте меню команд для работы.');
+        bot.sendMessage(chatId, 'Ваш аккаунт уже привязан к боту. Используйте меню команд для работы.');
       } else {
-        bot.sendMessage(chatId, '🔗 Вы не авторизованы. Пожалуйста, привяжите аккаунт через раздел "Личный кабинет" на сайте BuildFlow.');
+        bot.sendMessage(chatId, 'Вы не авторизованы. Пожалуйста, привяжите аккаунт через раздел "Личный кабинет" на сайте BuildFlow.');
       }
     } catch (e) {}
   });
@@ -68,7 +68,7 @@ if (token && token !== 'secret') {
     const searchQuery = match[1];
     try {
       const user = await User.findOne({ where: { telegramId: chatId.toString(), status: { [Op.ne]: 'deleted' } }, include: [Role] });
-      if (!user || user.Role.name !== 'Администратор') return bot.sendMessage(chatId, '❌ Эта команда доступна только администраторам.');
+      if (!user || user.Role.name !== 'Администратор') return bot.sendMessage(chatId, 'Эта команда доступна только администраторам.');
       
       let whereClause = {};
       if (searchQuery) {
@@ -80,7 +80,7 @@ if (token && token !== 'secret') {
       
       let text = searchQuery ? `*Результаты поиска по "${searchQuery}" (${projects.length}):*\n\n` : '*Последние 10 проектов в системе:*\n\n';
       projects.forEach(p => {
-        text += `🔹 *${p.name}*\nСтатус проекта: ${projectStatusTranslations[p.status] || p.status}\n\n`;
+        text += `*${p.name}*\nСтатус проекта: ${projectStatusTranslations[p.status] || p.status}\n\n`;
       });
       bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
     } catch (error) {}
@@ -91,7 +91,7 @@ if (token && token !== 'secret') {
     const searchQuery = match[1];
     try {
       const user = await User.findOne({ where: { telegramId: chatId.toString(), status: { [Op.ne]: 'deleted' } }, include: [Role] });
-      if (!user || user.Role.name !== 'Администратор') return bot.sendMessage(chatId, '❌ Эта команда доступна только администраторам.');
+      if (!user || user.Role.name !== 'Администратор') return bot.sendMessage(chatId, 'Эта команда доступна только администраторам.');
       
       let whereClause = { status: { [Op.ne]: 'deleted' } };
       if (searchQuery) {
@@ -109,7 +109,7 @@ if (token && token !== 'secret') {
 
       let text = searchQuery ? `*Результаты поиска по "${searchQuery}" (${usersList.length}):*\n\n` : '*Последние 10 пользователей:*\n\n';
       usersList.forEach(u => {
-        text += `👤 ${u.fullName} - _${u.Role.name}_\n`;
+        text += `${u.fullName} - _${u.Role.name}_\n`;
       });
       bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
     } catch (error) {}
@@ -129,7 +129,7 @@ if (token && token !== 'secret') {
       if (searchQuery) {
         targetProjects = targetProjects.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
         if (targetProjects.length === 0) {
-          return bot.sendMessage(chatId, `❌ Проекты, содержащие в названии "${searchQuery}", не найдены.`);
+          return bot.sendMessage(chatId, `Проекты, содержащие в названии "${searchQuery}", не найдены.`);
         }
       }
 
@@ -154,16 +154,16 @@ if (token && token !== 'secret') {
       let settings = { global: true, mutedProjects: [] };
       if (user.tgSettings) { try { settings = JSON.parse(user.tgSettings); } catch(e){} }
 
-      const keyboard = [[{ text: settings.global ? '🔕 Выключить ВСЕ уведомления' : '🔔 Включить ВСЕ уведомления', callback_data: 'toggle_global' }]];
+      const keyboard = [[{ text: settings.global ? 'Выключить все уведомления' : 'Включить все уведомления', callback_data: 'toggle_global' }]];
 
       if (settings.global) {
         user.Projects.forEach(p => {
           const isMuted = settings.mutedProjects.includes(p.id);
-          keyboard.push([{ text: `${isMuted ? '❌' : '✅'} ${p.name}`, callback_data: `toggle_proj_${p.id}` }]);
+          keyboard.push([{ text: `${isMuted ? '[выкл] ' : '[вкл] '}${p.name}`, callback_data: `toggle_proj_${p.id}` }]);
         });
       }
 
-      bot.sendMessage(chatId, 'Настройки уведомлений (✅ - включены, ❌ - выключены):', { reply_markup: { inline_keyboard: keyboard } });
+      bot.sendMessage(chatId, 'Настройки уведомлений (вкл — уведомления по проекту включены; выкл — отключены):', { reply_markup: { inline_keyboard: keyboard } });
     } catch (error) {}
   });
 
@@ -192,12 +192,12 @@ if (token && token !== 'secret') {
         user.tgSettings = JSON.stringify(settings);
         await user.save();
 
-        const keyboard = [[{ text: settings.global ? '🔕 Выключить ВСЕ уведомления' : '🔔 Включить ВСЕ уведомления', callback_data: 'toggle_global' }]];
+        const keyboard = [[{ text: settings.global ? 'Выключить все уведомления' : 'Включить все уведомления', callback_data: 'toggle_global' }]];
         
         if (settings.global) {
           user.Projects.forEach(p => {
             const isMuted = settings.mutedProjects.includes(p.id);
-            keyboard.push([{ text: `${isMuted ? '❌' : '✅'} ${p.name}`, callback_data: `toggle_proj_${p.id}` }]);
+            keyboard.push([{ text: `${isMuted ? '[выкл] ' : '[вкл] '}${p.name}`, callback_data: `toggle_proj_${p.id}` }]);
           });
         }
 

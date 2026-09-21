@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import Task from './Task';
 import styles from '../../pages/ProjectDetails.module.css';
+import { TASK_STATUSES } from '../../utils/constants';
 
-const Stage = ({ stage, stageIndex, project, user, isEditingPlan, moveStage, moveTask, minDate, maxDate, fetchProject, setModalState, setActivePhoto, isFirstStage, isLastStage, handleDraftStageEdit, removeDraftStage, handleDraftTaskEdit, removeDraftTask, handleAddTaskToDraft }) => {
+const Stage = ({ baselineStage = null, stage, stageIndex, project, user, isEditingPlan, moveStage, moveTask, minDate, maxDate, fetchProject, setModalState, setActivePhoto, isFirstStage, isLastStage, handleDraftStageEdit, removeDraftStage, handleDraftTaskEdit, removeDraftTask, handleAddTaskToDraft }) => {
   const [editName, setEditName] = useState(stage.name);
   const [editStart, setEditStart] = useState(stage.startDate?.split('T')[0] || '');
   const [editEnd, setEditEnd] = useState(stage.plannedEndDate?.split('T')[0] || '');
@@ -15,9 +16,27 @@ const Stage = ({ stage, stageIndex, project, user, isEditingPlan, moveStage, mov
     }
   }, [editName, editStart, editEnd]);
 
-  const stageProgress = stage.Tasks?.length ? Math.round((stage.Tasks.filter(t => t.status === 'выполнена').length / stage.Tasks.length) * 100) : 0;
+  const tasks = stage.Tasks ?? [];
+  const isNewDraftStage =
+    isEditingPlan && typeof stage.id === 'string' && stage.id.startsWith('local-stage-');
+  /** Во время правки структуры полосы этапа считаются по сохранённым данным, а не по черновику */
+  const tasksForStageProgress =
+    isNewDraftStage
+      ? []
+      : isEditingPlan && baselineStage != null
+        ? (baselineStage.Tasks ?? [])
+        : tasks;
+  const countingTasks = tasks.filter((t) => t.status !== 'отменена');
+  const countingForProgressBar = tasksForStageProgress.filter((t) => t.status !== 'отменена');
+  const stageProgress = countingForProgressBar.length
+    ? Math.round(
+        (countingForProgressBar.filter((t) => t.status === TASK_STATUSES.DONE).length /
+          countingForProgressBar.length) *
+          100,
+      )
+    : 0;
   const isPending = user.role === 'Заказчик' && project.planStatus === 'pending_approval' && stage.status !== 'утверждено';
-  const allDone = stage.Tasks?.length > 0 ? stage.Tasks.every(t => t.status === 'выполнена') : true;
+  const allDone = countingTasks.length > 0 && countingTasks.every((t) => t.status === TASK_STATUSES.DONE);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -101,7 +120,7 @@ const Stage = ({ stage, stageIndex, project, user, isEditingPlan, moveStage, mov
       {user.role === 'Заказчик' && project.planStatus === 'approved' && project.status === 'active' && stage.status === 'ожидает утверждения' && (
         <div className={styles.actionButtons}>
           <button onClick={() => api.put(`/tasks/stage/${stage.id}/approve`).then(fetchProject)} disabled={!allDone} className="btn-success" style={{ flex: 2, opacity: allDone ? 1 : 0.6, cursor: allDone ? 'pointer' : 'not-allowed' }}>
-            {allDone ? 'Утвердить этап (Принять работу)' : 'Ожидайте выполнения всех задач...'}
+            {allDone ? 'Утвердить этап' : 'Ожидайте выполнения всех задач...'}
           </button>
           {allDone && <button onClick={() => setModalState({ isOpen: true, type: 'rejectStage', item: stage })} className="btn-danger">Отклонить</button>}
         </div>

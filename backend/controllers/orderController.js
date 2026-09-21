@@ -1,20 +1,12 @@
-import { ProjectStage, Task, Project, User, Role } from '../models/index.js';
+import { ProjectStage, Task } from '../models/index.js';
 import sequelize from '../config/db.js';
-import { sendNotification } from '../services/telegramBot.js';
-
-const triggerReapproval = async (projectId, actionText) => {
-  const project = await Project.findByPk(projectId, { include: [{ model: User, as: 'Users', include: [Role] }] });
-  if (project && project.planStatus === 'approved') {
-    project.planStatus = 'pending_approval';
-    await project.save();
-    const clients = project.Users.filter(u => u.Role.name === 'Заказчик');
-    clients.forEach(c => sendNotification(c, `Прораб изменил план проекта "${project.name}" (${actionText}). План возвращен на утверждение.`, project.id));
-  }
-};
+import { triggerReapproval } from '../services/planService.js';
+import { isBatchSilent } from '../utils/batchSilent.js';
 
 export const updateStageOrder = async (req, res) => {
   const { orderedStageIds } = req.body;
   const { projectId } = req.params;
+  const silent = isBatchSilent(req);
   const t = await sequelize.transaction();
   try {
     for (let i = 0; i < orderedStageIds.length; i++) {
@@ -24,9 +16,9 @@ export const updateStageOrder = async (req, res) => {
       );
     }
     await t.commit();
-    await triggerReapproval(projectId, 'изменен порядок этапов');
+    if (!silent) await triggerReapproval(projectId);
     
-    req.io.to(projectId.toString()).emit('stage_status_updated');
+    if (!silent) req.io.to(projectId.toString()).emit('stage_status_updated');
     res.json({ message: 'Порядок этапов обновлен' });
   } catch (error) {
     await t.rollback();
@@ -34,9 +26,12 @@ export const updateStageOrder = async (req, res) => {
   }
 };
 
+import { reopenApprovedStageIfNeeded } from '../utils/reopenApprovedStage.js';
+
 export const updateTaskOrder = async (req, res) => {
   const { orderedTaskIds } = req.body;
   const { stageId } = req.params;
+  const silent = isBatchSilent(req);
   const t = await sequelize.transaction();
   try {
     for (let i = 0; i < orderedTaskIds.length; i++) {
@@ -46,10 +41,11 @@ export const updateTaskOrder = async (req, res) => {
       );
     }
     await t.commit();
+    await reopenApprovedStageIfNeeded(parseInt(stageId, 10));
     const stage = await ProjectStage.findByPk(stageId);
     if (stage) {
-      await triggerReapproval(stage.projectId, 'изменен порядок задач');
-      req.io.to(stage.projectId.toString()).emit('stage_status_updated');
+      if (!silent) await triggerReapproval(stage.projectId);
+      if (!silent) req.io.to(stage.projectId.toString()).emit('stage_status_updated');
     }
     
     res.json({ message: 'Порядок задач обновлен' });

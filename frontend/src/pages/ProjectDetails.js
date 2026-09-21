@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import api from '../api/axios';
@@ -23,6 +23,9 @@ const ProjectDetails = () => {
   const [project, setProject] = useState(null);
   const [draftStages, setDraftStages] = useState(null);
   const [isEditingPlan, setIsEditingPlan] = useState(false);
+  /** Прогресс и флаги в шапке не меняются, пока идёт правка черновика структуры */
+  const [frozenHeaderProgressPercent, setFrozenHeaderProgressPercent] = useState(null);
+  const [frozenHeaderAllStagesApproved, setFrozenHeaderAllStagesApproved] = useState(null);
   const [modalState, setModalState] = useState({ isOpen: false, type: null, item: null });
   const [activePhoto, setActivePhoto] = useState(null);
 
@@ -76,6 +79,17 @@ const ProjectDetails = () => {
   }, [project, location.state, location.pathname, navigate]);
 
   const startEditPlan = () => {
+    const savedTasks = project.ProjectStages?.flatMap((s) => s.Tasks) || [];
+    const pct =
+      savedTasks.length === 0
+        ? 0
+        : Math.round(
+            (savedTasks.filter((t) => t.status === 'выполнена').length / savedTasks.length) * 100,
+          );
+    setFrozenHeaderProgressPercent(pct);
+    setFrozenHeaderAllStagesApproved(
+      project.ProjectStages.length > 0 && project.ProjectStages.every((s) => s.status === 'утверждено'),
+    );
     setDraftStages(JSON.parse(JSON.stringify(project.ProjectStages)));
     setIsEditingPlan(true);
   };
@@ -83,6 +97,8 @@ const ProjectDetails = () => {
   const cancelEditPlan = () => {
     setDraftStages(null);
     setIsEditingPlan(false);
+    setFrozenHeaderProgressPercent(null);
+    setFrozenHeaderAllStagesApproved(null);
   };
 
   const moveStage = (index, dir) => {
@@ -130,25 +146,48 @@ const ProjectDetails = () => {
     setDraftStages(ns);
   };
 
-  const handleAddStage = async () => {
-    if(!newStageName.trim() || !newStart || !newEnd) return alert("Заполните все поля для нового этапа.");
-    try {
-      const res = await api.post('/tasks/stage', { projectId: id, name: newStageName, startDate: newStart, plannedEndDate: newEnd });
-      const newStage = { ...res.data, Tasks: [] };
-      setDraftStages([...draftStages, newStage]);
-      setNewStageName(''); setNewStart(''); setNewEnd('');
-    } catch(err) { alert(err.response?.data?.message || 'Ошибка'); }
+  const handleAddStage = () => {
+    if (!newStageName.trim() || !newStart || !newEnd) return alert('Заполните все поля для нового этапа.');
+    const localId = `local-stage-${Date.now()}`;
+    setDraftStages([
+      ...draftStages,
+      {
+        id: localId,
+        name: newStageName.trim(),
+        startDate: newStart,
+        plannedEndDate: newEnd,
+        description: '',
+        status: 'в работе',
+        Tasks: [],
+      },
+    ]);
+    setNewStageName('');
+    setNewStart('');
+    setNewEnd('');
   };
 
-  const handleAddTaskToDraft = async (stageId, desc) => {
-    if (!desc.trim()) return alert("Описание задачи не может быть пустым.");
-    try {
-      const res = await api.post('/tasks', { stageId, assignedUserId: user.id, description: desc });
-      const ns = [...draftStages];
-      const si = ns.findIndex(s => s.id === stageId);
-      ns[si].Tasks.push(res.data);
-      setDraftStages(ns);
-    } catch(err) { alert(err.response?.data?.message || 'Ошибка'); }
+  const handleAddTaskToDraft = (stageId, desc) => {
+    if (!desc.trim()) return alert('Описание задачи не может быть пустым.');
+    const localTaskId = `local-task-${Date.now()}`;
+    const ns = [...draftStages];
+    const si = ns.findIndex((s) => s.id === stageId);
+    if (si === -1) return;
+    const prev = ns[si].Tasks || [];
+    ns[si] = {
+      ...ns[si],
+      Tasks: [
+        ...prev,
+        {
+          id: localTaskId,
+          stageId,
+          description: desc.trim(),
+          status: 'новая',
+          assignedUserId: user.id,
+          order: prev.length,
+        },
+      ],
+    };
+    setDraftStages(ns);
   };
 
   const savePlanChanges = async () => {
@@ -164,18 +203,61 @@ const ProjectDetails = () => {
     }
 
     try {
-      const originalStageIds = project.ProjectStages.map(s => s.id);
-      const currentStageIds = draftStages.map(s => s.id);
-      const stagesToDelete = originalStageIds.filter(id => !currentStageIds.includes(id));
-      
-      for (const sid of stagesToDelete) {
-        await api.delete(`/tasks/stage/${sid}`);
+      const silent = { params: { batchSilent: '1' } };
+      const isLocalStage = (sid) => String(sid).startsWith('local-stage-');
+      const isLocalTask = (tid) => String(tid).startsWith('local-task-');
+
+      let workingStages = JSON.parse(JSON.stringify(draftStages));
+
+      for (let i = 0; i < workingStages.length; i++) {
+        const s = workingStages[i];
+        if (isLocalStage(s.id)) {
+          const res = await api.post(
+            '/tasks/stage',
+            {
+              projectId: parseInt(id, 10),
+              name: s.name,
+              startDate: s.startDate,
+              plannedEndDate: s.plannedEndDate,
+            },
+            silent,
+          );
+          const created = res.data;
+          workingStages[i] = {
+            ...s,
+            ...created,
+            Tasks: (s.Tasks || []).map((t) => ({ ...t, stageId: created.id })),
+          };
+        }
       }
 
-      for (const draftStage of draftStages) {
-        const originalStage = project.ProjectStages.find(s => s.id === draftStage.id);
+      for (const st of workingStages) {
+        const list = st.Tasks || [];
+        for (let ti = 0; ti < list.length; ti++) {
+          const t = list[ti];
+          if (isLocalTask(t.id)) {
+            const res = await api.post(
+              '/tasks',
+              { stageId: st.id, assignedUserId: user.id, description: t.description },
+              silent,
+            );
+            st.Tasks[ti] = res.data;
+          }
+        }
+      }
 
-        if (!originalStage) { // Это новый этап, он уже создан
+      const originalStageIds = project.ProjectStages.map((s) => s.id);
+      const currentStageIds = workingStages.map((s) => s.id);
+      const stagesToDelete = originalStageIds.filter((sid) => !currentStageIds.includes(sid));
+
+      for (const sid of stagesToDelete) {
+        await api.delete(`/tasks/stage/${sid}`, silent);
+      }
+
+      for (const draftStage of workingStages) {
+        const originalStage = project.ProjectStages.find((s) => s.id === draftStage.id);
+
+        if (!originalStage) {
           continue;
         }
 
@@ -184,38 +266,46 @@ const ProjectDetails = () => {
           (draftStage.startDate?.split('T')[0] || '') !== (originalStage.startDate?.split('T')[0] || '') ||
           (draftStage.plannedEndDate?.split('T')[0] || '') !== (originalStage.plannedEndDate?.split('T')[0] || '');
 
-        const tasksChanged = JSON.stringify(draftStage.Tasks.map(t => ({id: t.id, desc: t.description}))) !== JSON.stringify(originalStage.Tasks.map(t => ({id: t.id, desc: t.description})));
+        const tasksChanged =
+          JSON.stringify(draftStage.Tasks.map((t) => ({ id: t.id, desc: t.description }))) !==
+          JSON.stringify(originalStage.Tasks.map((t) => ({ id: t.id, desc: t.description })));
 
         if (stageDataChanged || tasksChanged) {
-          await api.put(`/tasks/stage/${draftStage.id}/rename`, { 
-            name: draftStage.name, 
-            startDate: draftStage.startDate, 
-            plannedEndDate: draftStage.plannedEndDate 
-          });
+          await api.put(
+            `/tasks/stage/${draftStage.id}/rename`,
+            {
+              name: draftStage.name,
+              startDate: draftStage.startDate,
+              plannedEndDate: draftStage.plannedEndDate,
+            },
+            silent,
+          );
         }
-        
+
         for (const draftTask of draftStage.Tasks) {
-          const originalTask = originalStage.Tasks.find(t => t.id === draftTask.id);
+          const originalTask = originalStage.Tasks.find((t) => t.id === draftTask.id);
           if (originalTask && draftTask.description !== originalTask.description) {
-            await api.put(`/tasks/${draftTask.id}/edit`, { description: draftTask.description });
+            await api.put(`/tasks/${draftTask.id}/edit`, { description: draftTask.description }, silent);
           }
         }
-        
-        const originalTaskIds = originalStage.Tasks.map(t => t.id);
-        const currentTaskIds = draftStage.Tasks.map(t => t.id);
-        const tasksToDelete = originalTaskIds.filter(id => !currentTaskIds.includes(id));
+
+        const originalTaskIds = originalStage.Tasks.map((t) => t.id);
+        const currentTaskIds = draftStage.Tasks.map((t) => t.id);
+        const tasksToDelete = originalTaskIds.filter((tid) => !currentTaskIds.includes(tid));
         for (const tid of tasksToDelete) {
-          await api.delete(`/tasks/${tid}`);
+          await api.delete(`/tasks/${tid}`, silent);
         }
       }
 
-      await api.put(`/order/stages/project/${id}`, { orderedStageIds: currentStageIds });
-      for (const s of draftStages) {
-        await api.put(`/order/tasks/stage/${s.id}`, { orderedTaskIds: s.Tasks.map(t => t.id) });
+      await api.put(`/order/stages/project/${id}`, { orderedStageIds: currentStageIds }, silent);
+      for (const s of workingStages) {
+        await api.put(`/order/tasks/stage/${s.id}`, { orderedTaskIds: s.Tasks.map((t) => t.id) }, silent);
       }
-      
+
       await api.put(`/projects/${id}/plan-status`, { planStatus: PLAN_STATUSES.PENDING });
       setIsEditingPlan(false);
+      setFrozenHeaderProgressPercent(null);
+      setFrozenHeaderAllStagesApproved(null);
       fetchProject();
     } catch(e) { 
       alert(e.response?.data?.message || 'Ошибка сохранения'); 
@@ -238,8 +328,15 @@ const ProjectDetails = () => {
   if (!project) return <div style={{textAlign: 'center', padding: '50px'}}>Загрузка...</div>;
 
   const activeStages = isEditingPlan ? draftStages : project.ProjectStages;
-  const totalTasks = project.ProjectStages?.flatMap(s => s.Tasks) || [];
-  const totalProgress = totalTasks.length === 0 ? 0 : Math.round((totalTasks.filter(t => t.status === 'выполнена').length / totalTasks.length) * 100);
+  const totalTasks = project.ProjectStages?.flatMap((s) => s.Tasks) || [];
+  const liveTotalProgress =
+    totalTasks.length === 0 ? 0 : Math.round((totalTasks.filter((t) => t.status === 'выполнена').length / totalTasks.length) * 100);
+  const totalProgress =
+    isEditingPlan && frozenHeaderProgressPercent !== null ? frozenHeaderProgressPercent : liveTotalProgress;
+  const headerAllStagesApproved =
+    isEditingPlan && frozenHeaderAllStagesApproved !== null
+      ? frozenHeaderAllStagesApproved
+      : project.ProjectStages.length > 0 && project.ProjectStages.every((s) => s.status === 'утверждено');
   const pendingTransfers = totalTasks.filter(t => t.transferToUserId === user.id && t.status !== 'выполнена');
 
   const minDate = project.startDate?.split('T')[0];
@@ -266,8 +363,8 @@ const ProjectDetails = () => {
           </div>
         )}
 
-        <ProjectHeader project={project} user={user} totalProgress={totalProgress} 
-          allStagesApproved={project.ProjectStages.length > 0 && project.ProjectStages.every(s => s.status === 'утверждено')}
+        <ProjectHeader project={project} user={user} totalProgress={totalProgress}
+          allStagesApproved={headerAllStagesApproved}
           onPlanSubmit={() => setModalState({ isOpen: true, type: 'submitPlan' })}
           onPlanStatusChange={(s) => api.put(`/projects/${id}/plan-status`, { planStatus: s }).then(fetchProject)}
           onProjectFinish={() => setModalState({ isOpen: true, type: 'finishProject' })}
@@ -300,7 +397,9 @@ const ProjectDetails = () => {
 
         {activeStages.map((stage, index) => (
           <div id={`stage-${stage.id}`} key={stage.id}>
-            <Stage stage={stage} stageIndex={index} project={project} user={user} 
+            <Stage
+              baselineStage={project.ProjectStages?.find((ps) => ps.id === stage.id) ?? null}
+              stage={stage} stageIndex={index} project={project} user={user}
               isEditingPlan={isEditingPlan} moveStage={moveStage} moveTask={moveTask} 
               minDate={minDate} maxDate={maxDate} fetchProject={fetchProject} setModalState={setModalState} setActivePhoto={setActivePhoto}
               isFirstStage={index===0} isLastStage={index===activeStages.length-1}

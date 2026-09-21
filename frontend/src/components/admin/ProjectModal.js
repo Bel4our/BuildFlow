@@ -35,6 +35,14 @@ const ProjectModal = ({ isOpen, onClose, onSave, projectData, users }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (selectedClients.length === 0) {
+      alert('Выберите хотя бы одного заказчика.');
+      return;
+    }
+    if (selectedBuilders.length === 0) {
+      alert('Выберите хотя бы одного прораба.');
+      return;
+    }
     const userIds = [...selectedClients, ...selectedBuilders];
     onSave({ ...project, userIds });
   };

@@ -155,7 +155,7 @@ const AdminDashboard = () => {
             {filteredProjects.map(p => (
               <div className="card" key={p.id}>
                 <div className={styles.cardHeader}>
-                  <h3 className={`${styles.cardTitle} ${styles.truncateMultiline}`} title={p.name}>{p.name}</h3>
+                  <h3 className={styles.cardTitle} title={p.name}>{p.name}</h3>
                   <div style={{display:'flex', gap:'5px', flexShrink: 0}}>
                     <button onClick={() => openProjectModal(p)} className="btn-secondary">Изменить</button>
                     <button onClick={() => setModalState({ isOpen: true, type: 'deleteProject', item: p })} className="btn-danger">✕</button>

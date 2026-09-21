@@ -85,7 +85,7 @@ const Task = ({ task, taskIndex, stage, project, user, fetchProject, setModalSta
     formData.append('reportText', taskReport);
     taskFiles.forEach(fObj => formData.append('photos', fObj.file));
     try {
-      await api.put(`/tasks/${task.id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await api.put(`/tasks/${task.id}`, formData);
       setTaskFiles([]); setTaskReport('');
       fetchProject();
     } catch (err) {

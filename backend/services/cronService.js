@@ -34,7 +34,7 @@ export const checkOverdueStages = async () => {
         const rolePrefix = u.Role.name === ROLES.CLIENT ? 'Уважаемый Заказчик' : 'Внимание, Прораб';
         sendNotification(
           u, 
-          `⚠️ ${rolePrefix}! Этап "${stage.name}" в проекте "${stage.Project.name}" был просрочен! Дедлайн был: ${new Date(stage.plannedEndDate).toLocaleDateString('ru-RU')}.`, 
+          `${rolePrefix}! Этап "${stage.name}" в проекте "${stage.Project.name}" был просрочен. Дедлайн был: ${new Date(stage.plannedEndDate).toLocaleDateString('ru-RU')}.`, 
           stage.Project.id
         );
       });
